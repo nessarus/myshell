@@ -1,1 +1,0 @@
-The goal of this project is to implement a program named myshell supporting a small subset of the features of a standard Unix-based shell. The project uses some of the advanced features of the C99 programming language, such as system-calls responsible for process invocation and monitoring, and input and output management using file and pipe descriptors.
