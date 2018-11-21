@@ -43,11 +43,9 @@ char* edit_cd_path(char *cd_path)
         if(stat(fullpath, pointer) != 0)
         {
             perror( "Cannot open stat" );
-            //                        exit( EXIT_FAILURE );
         }
         else if( S_ISDIR( pointer->st_mode ))
         {
-            printf("dp->d_name is %s\n",dp->d_name);
             cd_path = realloc(cd_path,(strlen(cd_path)+strlen(dp->d_name)+2)*sizeof(char));
             if(cd_path == NULL)
             {
@@ -68,9 +66,8 @@ void cd_not_path_execution(SHELLCMD *t)
         char previous_directory[MAXPATHLEN];
         getcwd(previous_directory, MAXPATHLEN);
         char *cd_path;
-        cd_path = (char*) malloc(0); //strlen(".:..") * sizeof(char));
+        cd_path = (char*) malloc(0);
     
-        //            char *argv_dir = t->argv[1];
         char *end_argv_dir;
         char *argv_dir = strtok_r(t->argv[1],"/", &end_argv_dir);
         while(argv_dir)
@@ -85,9 +82,6 @@ void cd_not_path_execution(SHELLCMD *t)
             {
                 if(strcmp(temp,argv_dir)==0)
                 {
-                    printf("\n\n");
-                    printf("temp is %s\n",temp);
-                    
                     chdir(temp);
                     dir_found = true;
                     break;
@@ -115,7 +109,7 @@ int time_execution(SHELLCMD *t)
     unsigned  long diff=0;
     if (t->argc==1)
     {
-        printf("\n\nexecution time is 0 millionseconds\n");
+        printf("\n 0 msec\n");
         return EXIT_SUCCESS;
     }
         
@@ -129,8 +123,8 @@ int time_execution(SHELLCMD *t)
     int exitstatus_temp;
     exitstatus_temp=execute_shellcmd(t);
     gettimeofday(&end,NULL);
-    diff = 1000000 * (end.tv_sec-start.tv_sec)+ end.tv_usec-start.tv_usec;
-    printf("\n\nexecution time is %ld millionseconds\n",diff);
+    diff =(end.tv_usec-start.tv_usec)/1000;
+    printf("\n %ld msec\n",diff);
     return exitstatus_temp;
 }
 
@@ -141,16 +135,15 @@ void find_path_execute(SHELLCMD *t)
     {
         char temp_path[strlen(temp)+strlen(t->argv[0])];
         sprintf(temp_path,"%s/%s",temp,t->argv[0]);
-        FILE *fp=fopen(temp_path,"r");
-        if(fp!=NULL)
-        {
+       
+        if (access(temp_path,0)==0)
             execv(temp_path,t->argv);
-        }
+        
         temp = strtok(NULL,":");
 
     }
-
-    fprintf(stderr, "%s: command  not found\n",t->argv[0]);
+     if (access(t->argv[0],0)!=0)
+         fprintf(stderr, "%s: command not found\n",t->argv[0]);
     return ;
 }
 
@@ -175,106 +168,50 @@ void exit_return_value(SHELLCMD *t)
     exit(previous_exitstatus);
 }
 
-int sequential_execution(SHELLCMD *t)
+void execute_command(SHELLCMD *t)
 {
-    switch(t->type)
+    char *strtemp = strchr(t->argv[0],'/');
+    if(strtemp!=NULL)
     {
-        case CMD_SEMICOLON:
-        {
-            previous_exitstatus = execute_shellcmd(t->left);
-           return execute_shellcmd(t->right);
-        }
-        case CMD_AND:
-        {
-            return  execute_shellcmd(t->left) || execute_shellcmd(t->right);
-        }
-        case CMD_OR:
-        {
-            return  execute_shellcmd(t->left) && execute_shellcmd(t->right);
-        } 
-        case CMD_COMMAND:
-            break;
-        case CMD_SUBSHELL:
-        {
-            pid_t subshell_pid;
-            subshell_pid=fork();
-            if(subshell_pid==0)
-            {
-                exit(execute_shellcmd(t->left));
-            }
-            else
-            {
-                wait(&subshell_pid);
-                return subshell_pid;
-            }
-        }
-        case CMD_PIPE:
-        {
-            int fd[2];
-            pipe(fd);
-            int saved_stdin = dup(STDIN_FILENO);
-            int saved_stdout = dup(STDOUT_FILENO);
-
-            pid_t pipe_pid;
-            
-            switch (pipe_pid = fork())
-            {
-                case -1:
-                {
-                    perror( argv0 );
-                    exit(EXIT_FAILURE);
-                    break;
-                }
-
-                case 0: // child
-                {
-                    close(fd[1]);
-                    dup2(fd[0], STDOUT_FILENO);
-                    exit(execute_shellcmd(t->left));
-                } 
-
-                default: // parent
-                {
-                    wait(&pipe_pid);
-                    close(fd[0]);
-                    pid_t pipe2_pid;
-
-                    switch(pipe2_pid = fork())
-                    {
-                        case -1:
-                        {
-                            perror( argv0 );
-                            exit(EXIT_FAILURE);
-                            break;
-                        }
-
-                        case 0: // child 2
-                        {
-                            dup2(fd[1], STDIN_FILENO);
-                            exit(execute_shellcmd(t->right));
-                        }
-
-                        default: // parent
-                        {
-                            wait(&pipe2_pid);
-                            close(fd[1]);
-                            dup2(saved_stdin,STDIN_FILENO);
-                            dup2(saved_stdout,STDOUT_FILENO);
-                            return pipe2_pid; 
-                        }
-                    }
-                    
-                }
-
-
-            }
-            break;
-        }
-        case CMD_BACKGROUND:
-            break;
+        exit(execv(t->argv[0],t->argv));
     }
+    
+    find_path_execute(t);
+    exit(EXIT_FAILURE);
+    return;
+}
 
-    return EXIT_FAILURE;
+void shell_script_execution(SHELLCMD *t)
+{
+    FILE *file=fopen(t->argv[0],"r");
+    int saved_stdin = dup(STDIN_FILENO);
+    char directory[MAXPATHLEN];
+    getcwd(directory,MAXPATHLEN);
+    strcat(directory,"/myshell");
+    char *arguments[2];
+    arguments[0]="myshell";
+    arguments[1]=NULL;
+    pid_t script_pid =fork();
+    
+    if(script_pid == -1) {                             // process creation failed
+        printf("fork() failed\n");
+        exit(EXIT_FAILURE);
+    }
+    else if(script_pid==0)
+    {
+        dup2(fileno(file),STDIN_FILENO);
+        execv(directory,arguments);
+        printf("execv failed!\n");
+        exit(EXIT_FAILURE);
+    }
+    else
+    {
+        wait(&script_pid);
+        fclose(file);
+        dup2(saved_stdin,STDIN_FILENO);
+        
+    }
+    return;
 }
 
 void redirection_preparation(SHELLCMD *t)
@@ -311,17 +248,159 @@ void redirection_preparation(SHELLCMD *t)
     return;
 }
 
-void execute_command(SHELLCMD *t)
+int sequential_execution(SHELLCMD *t)
 {
-    char *strtemp = strchr(t->argv[0],'/');
-    if(strtemp!=NULL)
+    switch(t->type)
     {
-        exit(execv(t->argv[0],t->argv));
+        case CMD_SEMICOLON:
+        {
+            previous_exitstatus = execute_shellcmd(t->left);
+            return execute_shellcmd(t->right);
+        }
+        case CMD_AND:
+        {
+            return  execute_shellcmd(t->left) || execute_shellcmd(t->right);
+        }
+        case CMD_OR:
+        {
+            return  execute_shellcmd(t->left) && execute_shellcmd(t->right);
+        } 
+        case CMD_COMMAND:
+        {
+            exit_return_value(t);
+
+            if (strcmp(t->argv[0],"time")==0)
+            {
+                return time_execution(t);
+            }
+
+            if(strcmp(t->argv[0],"cd")==0)
+            {
+                if(t->argc==1)
+                {
+                    chdir(HOME);
+                }
+                else if(t->argv[1][0]=='/')
+                {
+                    chdir(t->argv[1]);
+                }
+                else
+                {
+                    cd_not_path_execution(t);
+                }
+                return EXIT_SUCCESS;
+            }
+
+            pid_t fpid;
+            switch (fpid=fork()) // fork
+            {
+                case -1:
+                {
+                    perror( argv0 );
+                    exit(EXIT_FAILURE);
+                }
+                case 0: // child process
+                {
+                    execute_command(t);
+                    return (EXIT_SUCCESS);
+
+                }
+                default: // parent process
+                {
+                    wait(&fpid);
+                    if (fpid)
+                        if (access(t->argv[0],0)==0)
+                            shell_script_execution(t);
+                    return fpid;
+                }
+            }
+            return EXIT_FAILURE;
+            break;
+        }
+        case CMD_SUBSHELL:
+        {
+            pid_t subshell_pid;
+            subshell_pid=fork();
+            if(subshell_pid==0)
+            {
+                exit(execute_shellcmd(t->left));
+            }
+            else
+            {
+                wait(&subshell_pid);
+                return subshell_pid;
+            }
+        }
+        case CMD_PIPE:
+        {
+            int fd[2];
+            pipe(fd);
+            int saved_stdin = dup(STDIN_FILENO);
+            int saved_stdout = dup(STDOUT_FILENO);
+
+            pid_t pipe_pid;
+            
+            switch (pipe_pid = fork())
+            {
+                case -1:
+                {
+                    perror( argv0 );
+                    exit(EXIT_FAILURE);
+                    break;
+                }
+
+                case 0: // left child
+                {
+                    close(fd[0]);
+                    dup2(fd[1], STDOUT_FILENO);
+                    exit(execute_shellcmd(t->left));
+                } 
+
+                default: // parent
+                {
+                    wait(&pipe_pid);
+                    close(fd[1]);
+                    pid_t pipe2_pid;
+
+                    switch(pipe2_pid = fork())
+                    {
+                        case -1:
+                        {
+                            perror( argv0 );
+                            exit(EXIT_FAILURE);
+                            break;
+                        }
+
+                        case 0: // right child
+                        {
+                            dup2(fd[0], STDIN_FILENO);
+                            exit(execute_shellcmd(t->right));
+                        }
+
+                        default: // parent
+                        {
+                            wait(&pipe2_pid);
+                            close(fd[0]);
+                            dup2(saved_stdin,STDIN_FILENO);
+                            dup2(saved_stdout,STDOUT_FILENO);
+                            return pipe2_pid; 
+                        }
+                    }
+                    
+                }
+
+
+            }
+            break;
+        }
+        case CMD_BACKGROUND:
+        {
+            
+            break;
+        }
     }
-    
-    find_path_execute(t);
-    exit(EXIT_FAILURE);
-    return;
+
+    return EXIT_FAILURE;
 }
 
 int execute_shellcmd(SHELLCMD *t)
@@ -340,64 +419,10 @@ int execute_shellcmd(SHELLCMD *t)
     int saved_stdout = dup(STDOUT_FILENO);
     redirection_preparation(t);
     
-    if( t->type!=CMD_COMMAND )
-    {
-        exitstatus=sequential_execution(t);
-        dup2(saved_stdin,STDIN_FILENO);
-        dup2(saved_stdout,STDOUT_FILENO);
-        return exitstatus;
+    exitstatus=sequential_execution(t);
+    dup2(saved_stdin,STDIN_FILENO);
+    dup2(saved_stdout,STDOUT_FILENO);
 
-    }
-
-    exit_return_value(t);
-    
-    if (strcmp(t->argv[0],"time")==0)
-    {
-        exitstatus=time_execution(t);
-        return exitstatus;
-    }
-  
-    if(strcmp(t->argv[0],"cd")==0)
-    {
-        if(t->argc==1)
-        {
-            chdir(HOME);
-        }
-        else if(t->argv[1][0]=='/')
-        {
-            chdir(t->argv[1]);
-        }
-        else
-        {
-            cd_not_path_execution(t);
-        }
-        return exitstatus;
-    }
-
-
-    pid_t fpid;
-    switch (fpid=fork()) // fork
-    {
-        case -1:
-        {
-            perror( argv0 );
-            exit(EXIT_FAILURE);
-        }
-            
-        case 0: // child process
-        {
-           execute_command(t);
-           
-        }
-        default: // parent process
-        {
-            wait(&fpid);
-            exitstatus=fpid;
-            dup2(saved_stdin,STDIN_FILENO);
-            dup2(saved_stdout,STDOUT_FILENO);
-            break;
-        }
-    }
     return exitstatus;
 }
 
