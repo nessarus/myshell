@@ -16,8 +16,6 @@ int check_exit(int exitstatus, int previous_exitstatus)
 }
 
 
-
-
 int main(int argc, char *argv[])
 {
 //  REMEMBER THE PROGRAM'S NAME (TO REPORT ANY LATER ERROR MESSAGES)
@@ -48,25 +46,17 @@ int main(int argc, char *argv[])
 
 //  READ AND EXECUTE COMMANDS FROM stdin UNTIL IT IS CLOSED (with control-D)
     while(!feof(stdin)) {
-	SHELLCMD	*t = parse_shellcmd(stdin);
-//        printf("argc is %i\n",t->argc);
-//        printf("argv is %s\n",t->argv[0]);
-//        printf("infile is %s\n",t->infile);
-//        printf("outfile is %s\n",t->outfile);
-//        printf("append is %i\n",t->append);
-	if(t != NULL) {
+        SHELLCMD	*t = parse_shellcmd(stdin);
+        if(t != NULL) {
 
 //  WE COULD DISPLAY THE PARSED COMMAND-TREE, HERE, BY CALLING:
 //	    print_shellcmd(t);
 
-        previous_exitstatus = exitstatus;
-        exitstatus = execute_shellcmd(t);
-//        if(exitstatus == 3){
-//            exit(previous_exitstatus);
-//        }
-//        previous_exitstatus = check_exit(exitstatus,previous_exitstatus);
-	    free_shellcmd(t);
-	}
+            previous_exitstatus = exitstatus;
+            exitstatus = execute_shellcmd(t);
+
+            free_shellcmd(t);
+        }
     }
     if(interactive) {
 	fputc('\n', stdout);
