@@ -46,7 +46,21 @@ int execute_shellcmd(SHELLCMD *t)
     else {				// normal, exit commands
 	exitstatus	= EXIT_SUCCESS;
     }
-    
+   
+    if(strcmp(t->argv[0],"exit")==0){
+        if(t->argc<=1) {
+            return 3;
+        }
+        if(strcmp(t->argv[1],"0")==0) {
+            exit(EXIT_SUCCESS);
+        }
+        if(strcmp(t->argv[1],"1")==0) {
+            exit(EXIT_FAILURE);
+        }
+        return 3;
+    }
+
+
     pid_t fpid;
     fpid=fork();
     

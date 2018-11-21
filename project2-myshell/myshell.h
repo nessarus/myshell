@@ -3,15 +3,12 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdbool.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <sys/param.h>
 
 //  Written by Chris.McDonald@uwa.edu.au, October 2017
 
 #if defined(__linux__)
     extern	char	*strdup(const char *str);
-    extern  int     fileno(FILE *fp);
+    extern	int	fileno(FILE *fp);
 #endif
 
 // ----------------------------------------------------------------------
@@ -51,9 +48,10 @@ typedef	struct sc {
 } SHELLCMD;
 
 
-extern SHELLCMD	*parse_shellcmd(FILE *);	// in parser.c
+extern SHELLCMD    *parse_shellcmd(FILE *);    // in parser.c
 extern void	free_shellcmd(SHELLCMD *);	// in parser.c
 extern int	execute_shellcmd(SHELLCMD *);	// in execute.c
+
 
 
 /* The global variable HOME points to a directory name stored as a

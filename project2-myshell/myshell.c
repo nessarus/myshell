@@ -2,8 +2,8 @@
 
 /*
    CITS2002 Project 2 2017
-   Name(s):             Joshua Chin Hao Ng
-   Student number(s):   20163079
+   Name(s):             student-name1 (, student-name2)
+   Student number(s):   student-number-1 (, student-number-2)
    Date:                date-of-submission
  */
 
@@ -34,21 +34,28 @@ int main(int argc, char *argv[])
     interactive		= (isatty(fileno(stdin)) && isatty(fileno(stdout)));
 
     int exitstatus	= EXIT_SUCCESS;
+    int previous_exitstatus = exitstatus;
 
 //  READ AND EXECUTE COMMANDS FROM stdin UNTIL IT IS CLOSED (with control-D)
-    while(!feof(stdin))
-    {
-        SHELLCMD	*t = parse_shellcmd(stdin);
+    while(!feof(stdin)) {
+	SHELLCMD	*t = parse_shellcmd(stdin);
+//        printf("argc is %i\n",t->argc);
+//        printf("argv is %s\n",t->argv[0]);
+//        printf("infile is %s\n",t->infile);
+//        printf("outfile is %s\n",t->outfile);
+//        printf("append is %i\n",t->append);
+	if(t != NULL) {
 
-        if(t != NULL)
-        {
+//  WE COULD DISPLAY THE PARSED COMMAND-TREE, HERE, BY CALLING:
+//	    print_shellcmd(t);
 
-            //  WE COULD DISPLAY THE PARSED COMMAND-TREE, HERE, BY CALLING:
-            //	    print_shellcmd(t);
-
-            exitstatus = execute_shellcmd(t); 
-            free_shellcmd(t);
+	    exitstatus = execute_shellcmd(t); 
+        if(exitstatus == 3){
+            exit(previous_exitstatus);
         }
+	    previous_exitstatus = exitstatus; 
+	    free_shellcmd(t);
+	}
     }
     if(interactive) {
 	fputc('\n', stdout);
