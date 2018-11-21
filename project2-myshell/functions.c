@@ -19,13 +19,13 @@ void execute_command(SHELLCMD *t)
 //step2: when we type in the command name, we look up the commands in default paths
 void find_path_execute(SHELLCMD *t)
 {
-    char *temp=strtok(PATH,":");// breaks up PATH by ":" tokens i.e. abc:efg:hij
+    char *temp=strtok(PATH,COLON);// breaks up PATH by ":" tokens i.e. abc:efg:hij
     while(temp){ 
         char temp_path[strlen(temp)+strlen(t->argv[0])];
         sprintf(temp_path,"%s/%s",temp,t->argv[0]);
         if (access(temp_path,0)==0) 
             execv(temp_path,t->argv);   // execute, path found success
-        temp = strtok(NULL,":");
+        temp = strtok(NULL,COLON);
     }
     if (access(t->argv[0],0)!=0)// check argv[0] is a shell script or not
         fprintf(stderr, "%s: command not found\n",t->argv[0]); //path find unsuccessful
@@ -67,9 +67,8 @@ char* edit_cd_path(char *cd_path)
         struct stat stat_buffer;
         struct stat *pointer = &stat_buffer;
         sprintf(fullpath, "%s/%s", ".", dp->d_name); 
-        if(stat(fullpath, pointer) != 0){ //file can't be inspected
+        if(stat(fullpath, pointer) != 0) //file can't be inspected
             continue;
-        }
         else if( S_ISDIR( pointer->st_mode )){//check whether the name is a directory name
             cd_path = realloc(cd_path,(strlen(cd_path)+strlen(dp->d_name)+2)*sizeof(char));
             if(cd_path == NULL){
@@ -93,7 +92,7 @@ void cd_not_path_execution(SHELLCMD *t)
     while(argv_dir){
         cd_path=edit_cd_path(cd_path);
         char *end_cd_path;
-        char *temp=strtok_r(cd_path,":",&end_cd_path);//breaks up cd_path .:..:abc:efg:hij
+        char *temp=strtok_r(cd_path,COLON,&end_cd_path);//breaks up cd_path .:..:abc:efg:hij
         bool dir_found = false;
         while(temp){
             if(strcmp(temp,argv_dir)==0){
@@ -101,7 +100,7 @@ void cd_not_path_execution(SHELLCMD *t)
                 dir_found = true;
                 break;
             }
-            temp = strtok_r(NULL,":",&end_cd_path);
+            temp = strtok_r(NULL,COLON,&end_cd_path);
         }
         if(!dir_found){                     //unsuccessful cd change
             printf("%s: %s: No such file or directory\n", t->argv[0],t->argv[1]);
@@ -145,10 +144,10 @@ int sequential_execution(SHELLCMD *t)
         }
         case CMD_AND:{
             return  execute_shellcmd(t->left) || execute_shellcmd(t->right);
-        }//execute_shellcmd returns 0 when execute successfully, so here we use OR logic.
+        }//execute_shellcmd returns 0 when executes successfully, so here we use OR logic.
         case CMD_OR:{
             return  execute_shellcmd(t->left) && execute_shellcmd(t->right);
-        }//execute_shellcmd returns 0 when execute successfully, so here we use AND logic.
+        }//execute_shellcmd returns 0 when executes successfully, so here we use AND logic.
         case CMD_COMMAND:
             break;//see execute_shellcmd
         case CMD_SUBSHELL:{//create a new fork to execute the command in subshell
@@ -190,11 +189,11 @@ int redirection_preparation(SHELLCMD *t)
         else
             dup2(fd,STDOUT_FILENO);//change the output node to the file descriptor of open file
     }
-    if(t->infile != NULL){
+    if(t->infile != NULL){ // infile operation
         int fp = open(t->infile, O_RDONLY);
         if(fp == -1){
             perror("Open infile failed!\n");
-            return EXIT_FAILURE;
+            return(EXIT_FAILURE);
         }
         else
             dup2(fp,STDIN_FILENO);//change the input node to the file descriptor of open file

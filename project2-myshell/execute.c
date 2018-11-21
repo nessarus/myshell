@@ -20,12 +20,11 @@ int execute_shellcmd(SHELLCMD *t)
         exitstatus  = EXIT_FAILURE;
         return exitstatus;
     }
-    else {              // normal, exit commands
+    else              // normal, exit commands
         exitstatus  = EXIT_SUCCESS;
-    }
     int saved_stdin = dup(STDIN_FILENO);
     int saved_stdout = dup(STDOUT_FILENO); // save the backup of stdin and stdout
-    if( redirection_preparation(t) )
+    if(redirection_preparation(t))
         return EXIT_FAILURE;
     if( t->type!=CMD_COMMAND ){
         exitstatus=sequential_execution(t);
@@ -39,24 +38,24 @@ int execute_shellcmd(SHELLCMD *t)
         exitstatus=time_execution(t);
         return exitstatus;
     }
+    //check if command is "cd"
     if(strcmp(t->argv[0],"cd")==0){
         if(t->argc==1)
             chdir(HOME);
-        else if(t->argv[1][0]=='/')
+        else if(t->argv[1][0]==SLASH_CHAR)
             chdir(t->argv[1]);
         else
             cd_not_path_execution(t);
         return exitstatus;
-    }//check if command is "cd"
+    }
     pid_t fpid;// step1,execute command
-    switch (fpid=fork()){ // fork
+    switch (fpid=fork()){ // fork, creating a child process and parent process
         case -1:{
             perror( argv0 );
             exit(EXIT_FAILURE);
         }
-        case 0: {// child process
-        execute_command(t);
-        }
+        case 0: // child process
+            execute_command(t);
         default:{ // parent process
             waitpid(fpid,&fpid,0);
             exitstatus=fpid;
