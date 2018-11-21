@@ -8,7 +8,8 @@
 #include <dirent.h>
 #include <sys/param.h>
 #include <sys/stat.h>
-#include<sys/time.h>
+#include <sys/time.h>
+#include <fcntl.h>
 
 //  Written by Chris.McDonald@uwa.edu.au, October 2017
 

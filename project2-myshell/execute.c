@@ -27,7 +27,7 @@ char* edit_cd_path(char *cd_path)
     DIR *dirp = opendir(current_path);
     if(dirp == NULL)
     {
-        perror( "Cannot open directory" );
+        perror( argv0 );
         exit(EXIT_FAILURE);
     }
     
@@ -47,16 +47,10 @@ char* edit_cd_path(char *cd_path)
         }
         else if( S_ISDIR( pointer->st_mode ))
         {
-            printf("dp->d_name is %s\n",dp->d_name);
-            /*
-             static char buffer[strlen(cd_path)+strlen(dp->d_name)+strlen(":")];
-             sprintf(buffer, "%s:%s", cd_path,dp->d_name);
-             cd_path = buffer;
-             */
             cd_path = realloc(cd_path,(strlen(cd_path)+strlen(dp->d_name)+2)*sizeof(char));
             if(cd_path == NULL)
             {
-                printf("Cannot allocate cd_path memory\n");
+                perror("Cannot allocate cd_path memory\n");
                 exit( EXIT_FAILURE );
             }
             sprintf(cd_path, "%s%s:", cd_path, dp->d_name);
@@ -73,9 +67,8 @@ void cd_not_path_execution(SHELLCMD *t)
         char previous_directory[MAXPATHLEN];
         getcwd(previous_directory, MAXPATHLEN);
         char *cd_path;
-        cd_path = (char*) malloc(0); //strlen(".:..") * sizeof(char));
+        cd_path = (char*) malloc(0); 
     
-        //            char *argv_dir = t->argv[1];
         char *end_argv_dir;
         char *argv_dir = strtok_r(t->argv[1],"/", &end_argv_dir);
         while(argv_dir)
@@ -90,9 +83,6 @@ void cd_not_path_execution(SHELLCMD *t)
             {
                 if(strcmp(temp,argv_dir)==0)
                 {
-                    printf("\n\n");
-                    printf("temp is %s\n",temp);
-                    
                     chdir(temp);
                     dir_found = true;
                     break;
@@ -111,13 +101,18 @@ void cd_not_path_execution(SHELLCMD *t)
         free(cd_path);
         return ;
 }
-
 int time_execution(SHELLCMD *t)
 {
     struct  timeval start;
     struct  timeval end;
     
-    unsigned  long diff;
+    unsigned  long diff=0;
+    if (t->argc==1)
+    {
+        printf("\n\nexecution time is 0 millionseconds\n");
+        return EXIT_SUCCESS;
+    }
+        
     gettimeofday(&start,NULL);
     for (int i=0;i<t->argc-1;i++)
     {
@@ -139,10 +134,8 @@ void find_path_execute(SHELLCMD *t)
     while(temp)
     {
         char temp_path[strlen(temp)+strlen(t->argv[0])];
-        strcpy(temp_path,temp);
-        strcat(temp_path,"/");
-        strcat(temp_path,t->argv[0]);
-        //printf("temp_path is %s\n",temp_path);
+        sprintf(temp_path,"%s/%s",temp,t->argv[0]);
+        
         FILE *fp=fopen(temp_path,"r");
         if(fp!=NULL)
         {
@@ -158,50 +151,41 @@ void find_path_execute(SHELLCMD *t)
 
 void exit_return_value(SHELLCMD *t)
 {
-    printf("11\n");
     if(strcmp(t->argv[0],"exit")!=0)
     {
         return;
     }
-    printf("12\n");
     if(t->argc<=1)
     {
         exit(previous_exitstatus);
     }
-    printf("13\n");
     if(strcmp(t->argv[1],"0")==0)
     {
         exit(EXIT_SUCCESS);
     }
-    printf("14\n");
     if(strcmp(t->argv[1],"1")==0)
     {
         exit(EXIT_FAILURE);
     }
-    printf("15\n");
     exit(previous_exitstatus);
 }
 
-bool sequential_execution(SHELLCMD *t, int *exitstatus)
+int sequential_execution(SHELLCMD *t)
 {
     switch(t->type)
     {
         case CMD_SEMICOLON:
         {
             previous_exitstatus = execute_shellcmd(t->left);
-            *exitstatus = execute_shellcmd(t->right);
-            return true;
-            break; 
+           return execute_shellcmd(t->right);
         }
         case CMD_AND:
         {
-            *exitstatus = execute_shellcmd(t->left) && execute_shellcmd(t->right);
-            return true;
+            return  execute_shellcmd(t->left) || execute_shellcmd(t->right);
         }
         case CMD_OR:
         {
-            *exitstatus = execute_shellcmd(t->left) || execute_shellcmd(t->right);
-            return true;
+            return  execute_shellcmd(t->left) && execute_shellcmd(t->right);
         } 
         case CMD_COMMAND:
             break;
@@ -211,15 +195,13 @@ bool sequential_execution(SHELLCMD *t, int *exitstatus)
             subshell_pid=fork();
             if(subshell_pid==0)
             {
-                printf("subshell start\n");
-                *exitstatus = execute_shellcmd(t->left);
-                printf("subshell end\n");
+
+                exit(execute_shellcmd(t->left));
             }
             else
             {
                 wait(&subshell_pid);
-                *exitstatus = subshell_pid;
-                printf("parent_sub\n");
+                return subshell_pid;
             }
         }
         case CMD_PIPE:
@@ -228,7 +210,7 @@ bool sequential_execution(SHELLCMD *t, int *exitstatus)
             break;
     }
 
-    return false;
+    return EXIT_FAILURE;
 }
 
 int execute_shellcmd(SHELLCMD *t)
@@ -236,7 +218,6 @@ int execute_shellcmd(SHELLCMD *t)
     int  exitstatus;
     //int return_value;
 
-    printf("1\n");
     if(t == NULL) {         // hmmmm, that's a problem
         exitstatus  = EXIT_FAILURE;
         return exitstatus;
@@ -244,16 +225,14 @@ int execute_shellcmd(SHELLCMD *t)
     else {              // normal, exit commands
         exitstatus  = EXIT_SUCCESS;
     }
-    printf("2\n");
 
-    if( sequential_execution(t, &exitstatus) )
+    if( t->type!=CMD_COMMAND )
     {
+        exitstatus=sequential_execution(t);
         return exitstatus;
     }
 
-    printf("3\n");
     exit_return_value(t);
-    printf("13\n");
     
     if (strcmp(t->argv[0],"time")==0)
     {
@@ -261,7 +240,6 @@ int execute_shellcmd(SHELLCMD *t)
         return exitstatus;
     }
   
-    printf("4\n");
     if(strcmp(t->argv[0],"cd")==0)
     {
         if(t->argc==1)
@@ -279,30 +257,44 @@ int execute_shellcmd(SHELLCMD *t)
         return exitstatus;
     }
 
-    printf("5\n");
     pid_t fpid;
-    fpid=fork();
-
-    if(fpid==0)// child process
+    switch (fpid=fork()) // fork
     {
-        char * strtemp;
-        strtemp=strchr(t->argv[0],'/');
-        if(strtemp!=NULL)
+        case -1:
         {
-           execv(t->argv[0],t->argv);
+            perror( argv0 );
+            exit(EXIT_FAILURE);
         }
-    printf("6\n");
+        
+        case 0: // child process
+        {
+            if(t->infile != NULL)
+            {
+                int fp = open(t->infile, O_RDONLY);
+                if(fp == -1)
+                {
+                    perror( argv0 );
+                    exit(EXIT_FAILURE);
+                }
 
-        find_path_execute(t);
-        exit(EXIT_FAILURE);
+                dup2(fp,STDIN_FILENO); // connect file to stdin
+            }
+            char *strtemp = strchr(t->argv[0],'/');
+            if(strtemp!=NULL)
+            {
+                exit(execv(t->argv[0],t->argv));
+            }
+
+            find_path_execute(t);
+            exit(EXIT_FAILURE);
+        }
+        default: // parent process
+        {
+            wait(&fpid);
+            exitstatus=fpid;
+            break;
+        }
     }
-    else // parent process
-    {
-        wait(&fpid);
-    }
-
-
-    printf("7\n");
 
     return exitstatus;
 }
