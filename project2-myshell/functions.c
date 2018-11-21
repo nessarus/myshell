@@ -177,7 +177,7 @@ int sequential_execution(SHELLCMD *t)
     return EXIT_FAILURE;//ensure the program can exit if no sequential situations match
 }
 //step 6:
-void redirection_preparation(SHELLCMD *t)
+int redirection_preparation(SHELLCMD *t)
 {
     if(t->outfile != NULL){//outfile operation
         int fd;
@@ -194,12 +194,12 @@ void redirection_preparation(SHELLCMD *t)
         int fp = open(t->infile, O_RDONLY);
         if(fp == -1){
             perror("Open infile failed!\n");
-            exit(EXIT_FAILURE);
+            return EXIT_FAILURE;
         }
         else
             dup2(fp,STDIN_FILENO);//change the input node to the file descriptor of open file
     }
-    return;
+    return EXIT_SUCCESS;
 }
 //step 7:
 int pipe_execution(SHELLCMD *t)

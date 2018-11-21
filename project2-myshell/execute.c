@@ -25,7 +25,8 @@ int execute_shellcmd(SHELLCMD *t)
     }
     int saved_stdin = dup(STDIN_FILENO);
     int saved_stdout = dup(STDOUT_FILENO); // save the backup of stdin and stdout
-    redirection_preparation(t);
+    if( redirection_preparation(t) )
+        return EXIT_FAILURE;
     if( t->type!=CMD_COMMAND ){
         exitstatus=sequential_execution(t);
         dup2(saved_stdin,STDIN_FILENO);

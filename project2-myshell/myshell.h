@@ -128,7 +128,7 @@ extern void find_path_execute(SHELLCMD *t);
 extern void exit_return_value(SHELLCMD *t);
 extern void terminate_child(int pid);
 extern int sequential_execution(SHELLCMD *t);
-extern void  redirection_preparation(SHELLCMD *t);
+extern int  redirection_preparation(SHELLCMD *t);
 extern void  execute_command(SHELLCMD *t);
 extern void shell_script_execution(SHELLCMD *t);
 extern int  background_execution(SHELLCMD *t);
