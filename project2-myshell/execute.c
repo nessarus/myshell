@@ -209,7 +209,67 @@ int sequential_execution(SHELLCMD *t)
             }
         }
         case CMD_PIPE:
+        {
+            int fd[2];
+            pipe(fd);
+            int saved_stdin = dup(STDIN_FILENO);
+            int saved_stdout = dup(STDOUT_FILENO);
+
+            pid_t pipe_pid;
+            
+            switch (pipe_pid = fork())
+            {
+                case -1:
+                {
+                    perror( argv0 );
+                    exit(EXIT_FAILURE);
+                    break;
+                }
+
+                case 0: // child
+                {
+                    close(fd[1]);
+                    dup2(fd[0], STDOUT_FILENO);
+                    exit(execute_shellcmd(t->left));
+                } 
+
+                default: // parent
+                {
+                    wait(&pipe_pid);
+                    close(fd[0]);
+                    pid_t pipe2_pid;
+
+                    switch(pipe2_pid = fork())
+                    {
+                        case -1:
+                        {
+                            perror( argv0 );
+                            exit(EXIT_FAILURE);
+                            break;
+                        }
+
+                        case 0: // child 2
+                        {
+                            dup2(fd[1], STDIN_FILENO);
+                            exit(execute_shellcmd(t->right));
+                        }
+
+                        default: // parent
+                        {
+                            wait(&pipe2_pid);
+                            close(fd[1]);
+                            dup2(saved_stdin,STDIN_FILENO);
+                            dup2(saved_stdout,STDOUT_FILENO);
+                            return pipe2_pid; 
+                        }
+                    }
+                    
+                }
+
+
+            }
             break;
+        }
         case CMD_BACKGROUND:
             break;
     }
@@ -286,6 +346,7 @@ int execute_shellcmd(SHELLCMD *t)
         dup2(saved_stdin,STDIN_FILENO);
         dup2(saved_stdout,STDOUT_FILENO);
         return exitstatus;
+
     }
 
     exit_return_value(t);
@@ -332,7 +393,8 @@ int execute_shellcmd(SHELLCMD *t)
         {
             wait(&fpid);
             exitstatus=fpid;
-             O);
+            dup2(saved_stdin,STDIN_FILENO);
+            dup2(saved_stdout,STDOUT_FILENO);
             break;
         }
     }
