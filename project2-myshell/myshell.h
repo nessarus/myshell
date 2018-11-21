@@ -3,6 +3,11 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdbool.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <dirent.h>
+#include <sys/param.h>
+#include <sys/stat.h>
 
 //  Written by Chris.McDonald@uwa.edu.au, October 2017
 
@@ -81,6 +86,8 @@ extern	char	*CDPATH;
 
 extern	char	*argv0;		// The name of the shell, typically myshell
 extern	bool	interactive;	// true if myshell is connected to a 'terminal'
+
+extern int previous_exitstatus;
 
 
 //  ----------------------------------------------------------------------

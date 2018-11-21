@@ -1,36 +1,24 @@
-#include<stdio.h>
-#include<string.h>
-#include<stdlib.h>
-#include<unistd.h>
+#include <sys/wait.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <string.h>
 
-int main (int argc, char*argv[])
+int main (int argc, char *argv[])
 {
-    pid_t fpid;
-    fpid=fork();
+    char *a;
+    char *b;
     
-    if(fpid==0)
-    {
-        //execute_preparation(t);
-        //printf("argv0 is %s\n",argv0);
-        //printf("argv[0] is %s\n",t->argv[0]);
-        printf("123\n");
-//        char ** execv_str=NULL;
-//        execv_str[0]="/usr/bin/cal";
-//        execv_str[1]="-y";
-//        execv_str[2]=NULL;
-        
-        char *execv_str[argc];
-        execv_str[0]="/usr/bin/cal",
-        execv_str[1]="-y";
-        execv_str[2]=NULL;
-        printf("%s\n",execv_str[0]);
-        execv("/usr/bin/cal",execv_str);
-        exit(EXIT_FAILURE);
-    }
-    else
-    {
-        wait(&fpid);
-    }
+    a="/Users/minruilu/cits2002/Project2/myshell";
+    b=strrchr(a,'/');
+    char c[strlen(a)-strlen(b)+1];
+    strncpy(c,a,strlen(a)-strlen(b));
+    c[strlen(a)-strlen(b)]='\0';
+    //printf("something\n");
+    //strcat(c,NULL);
+    printf("a is %s\n",a);
+    printf("b is %s\n",b);
+    printf("c is %s\n",c);
     return 0;
+    
 }
-
