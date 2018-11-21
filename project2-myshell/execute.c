@@ -376,7 +376,7 @@ int execute_shellcmd(SHELLCMD *t)
         execute_command(t);
         }
         default:{ // parent process
-            waitpid(-2, &fpid, 0);
+            waitpid(fpid, &fpid, 0);
             exitstatus=fpid;
             dup2(saved_stdin,STDIN_FILENO);
             dup2(saved_stdout,STDOUT_FILENO);
