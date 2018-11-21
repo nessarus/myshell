@@ -1,3 +1,0 @@
-84:1b:5e	NETGEAR	1188
-??:??:??	UNKNOWN-VENDOR	951
-74:e2:f5	Apple	138
