@@ -232,13 +232,13 @@ int sequential_execution(SHELLCMD *t)
                     case 0:
                     {
                         printf("Started %d\n", getpid());
-                        int exitstatus = execute_shellcmd(t->right);
+                        int exitstatus = execute_shellcmd(t->left->right);
                         kill(getpid(),SIGTERM);
                         exit(exitstatus);
                     }
                     default:
                     {
-                        return execute_shellcmd(t->left->right);
+                        return execute_shellcmd(t->right);
                     }
                 }
             }
@@ -254,13 +254,13 @@ int sequential_execution(SHELLCMD *t)
                     case 0:
                     {
                         printf("Started %d\n", getpid());
-                        int exitstatus = execute_shellcmd(t->right);
+                        int exitstatus = execute_shellcmd(t->left);
                         kill(getpid(),SIGTERM);
                         exit(exitstatus);
                     }
                     default:
                     {
-                        return execute_shellcmd(t->left);
+                        return execute_shellcmd(t->right);
                     }
                 }
             }
@@ -376,7 +376,7 @@ int execute_shellcmd(SHELLCMD *t)
         execute_command(t);
         }
         default:{ // parent process
-            wait(&fpid);
+            waitpid(-2, &fpid, 0);
             exitstatus=fpid;
             dup2(saved_stdin,STDIN_FILENO);
             dup2(saved_stdout,STDOUT_FILENO);
