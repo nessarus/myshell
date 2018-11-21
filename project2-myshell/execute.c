@@ -62,8 +62,6 @@ void exit_return_value(SHELLCMD *t)
 int execute_shellcmd(SHELLCMD *t)
 {
     int  exitstatus;
-    //int return_value;
-
     if(t == NULL) {         // hmmmm, that's a problem
         exitstatus  = EXIT_FAILURE;
         return exitstatus;
@@ -71,6 +69,8 @@ int execute_shellcmd(SHELLCMD *t)
     else {              // normal, exit commands
         exitstatus  = EXIT_SUCCESS;
     }
+    
+
 
     exit_return_value(t);
   
@@ -102,15 +102,15 @@ int execute_shellcmd(SHELLCMD *t)
             {
                 printf("argv_dir is %s\n",argv_dir);
 
-                cd_path = (char*) realloc(cd_path,0); //strlen(".:..") * sizeof(char));
+                cd_path = (char*) realloc(cd_path,sizeof(char)); //strlen(".:..") * sizeof(char));
                 if(cd_path == NULL)
                 {
                     printf("Cannot allocate memory\n");
                     exit( EXIT_FAILURE );
                 }
 
-                DIR *dirp;
-                dirp = opendir("."); //current_path);
+                const char* current_path = ".";
+                DIR *dirp = opendir(current_path);
                 if(dirp == NULL)
                 {
                     perror( "Cannot open directory" );
@@ -139,7 +139,7 @@ int execute_shellcmd(SHELLCMD *t)
                            sprintf(buffer, "%s:%s", cd_path,dp->d_name);
                            cd_path = buffer;
                            */
-                        cd_path = realloc(cd_path,(strlen(cd_path)+strlen(dp->d_name)+1)*sizeof(cd_path[0]));
+                        cd_path = realloc(cd_path,(strlen(cd_path)+strlen(dp->d_name)+2)*sizeof(char));
                         if(cd_path == NULL)
                         {
                             printf("Cannot allocate cd_path memory\n");
@@ -150,7 +150,7 @@ int execute_shellcmd(SHELLCMD *t)
                 }
                 //            temp_cd_path[strlen(temp_cd_path)-1]='\0';
                 printf("cd_path new directory is %s\n",cd_path);
-                closedir(dirp);
+//                closedir(dirp);
 
 
 

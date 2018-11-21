@@ -9,11 +9,15 @@
 #include <sys/param.h>
 #include <sys/stat.h>
 
+
 //  Written by Chris.McDonald@uwa.edu.au, October 2017
 
 #if defined(__linux__)
     extern	char	*strdup(const char *str);
     extern	int	fileno(FILE *fp);
+    
+    extern char *strtok_r(char *, const char *, char **);
+    #define BUFFER_SIZE 1024
 #endif
 
 // ----------------------------------------------------------------------
