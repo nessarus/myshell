@@ -14,33 +14,38 @@
 
     REMEMBER, THERE IS NO NEED FOR YOU TO UNDERSTAND OR MODIFY THIS CODE.
  */
-
+/*
+ CITS2002 Project 2 2017
+ Name(s):     Minrui Lu (, Joshua Ng)
+ Student number(s):   22278526 (, 20163079)
+ Date:        3rd-Nov-2017
+ */
 #include <signal.h>
 #include <setjmp.h>
 
 // ----------------------- parsing definitions --------------------------
 
 typedef enum {
-    T_AND = 0,
-    T_APPEND,
-    T_BACKGROUND,
-    T_BAD,
-    T_DQUOTE,
-    T_EOF,
-    T_FROMFILE,
-    T_LEFTB,
-    T_NL,
-    T_OR,
-    T_PIPE,
-    T_RIGHTB,
-    T_SCOLON,
-    T_SQUOTE,
-    T_TOFILE,
-    T_WORD,
+	T_AND = 0,
+	T_APPEND,
+	T_BACKGROUND,
+	T_BAD,
+	T_DQUOTE,
+	T_EOF,
+	T_FROMFILE,
+	T_LEFTB,
+	T_NL,
+	T_OR,
+	T_PIPE,
+	T_RIGHTB,
+	T_SCOLON,
+	T_SQUOTE,
+	T_TOFILE,
+	T_WORD,
 } TOKEN;
 
 #define	is_redirection(t) (t == T_FROMFILE || t == T_TOFILE || t == T_APPEND)
-#define	is_word(t)        (t == T_WORD || t == T_DQUOTE || t == T_SQUOTE)
+#define	is_word(t)        (t == T_WORD     || t == T_DQUOTE || t == T_SQUOTE)
 
 // -------------------------- lexical stuff -----------------------------
 
@@ -59,7 +64,7 @@ static	int	lc;
 static	int	prompt_no	= 1;
 static	int	nerrors		= 0;
 
-static void get(void)		// get the next buffered char from line
+static void get(void)			// get next buffered char from line
 {
     if(cc == ll) {
 	if(interactive) {
@@ -201,6 +206,15 @@ static void gettoken(void)
 
 // -------------------- parsing code (at last!) ------------------------ 
 
+static	jmp_buf	env;
+
+static void interrupt_parsing(int why)
+{
+    if(why == SIGINT && interactive)
+	fputc('\n', stdout);
+    longjmp(env, 1);
+}
+
 static SHELLCMD *new_shellcmd(CMDTYPE t)
 {
     SHELLCMD	*t1 = calloc(1, sizeof(*t1));
@@ -210,7 +224,7 @@ static SHELLCMD *new_shellcmd(CMDTYPE t)
     return t1;
 }
 
-static void get_redirection(SHELLCMD *t1)
+static bool get_redirection(SHELLCMD *t1)
 {
     char	*filename;
     TOKEN	cptoken	= token;
@@ -228,14 +242,14 @@ static void get_redirection(SHELLCMD *t1)
 	fprintf(stderr, "%s redirection filename expected\n",
 				cptoken == T_FROMFILE ? "input" : "output");
 	nerrors++;
-	return;
+	return false;
     }
 
     if(cptoken == T_FROMFILE) {
 	if(t1->infile != NULL) {
 	    fprintf(stderr, "multiple input redirection\n");
 	    nerrors++;
-	    return;
+	    return false;
 	}
 	t1->infile = filename;
     }
@@ -243,11 +257,12 @@ static void get_redirection(SHELLCMD *t1)
 	if(t1->outfile != NULL) {
 	    fprintf(stderr, "multiple output redirection\n");
 	    nerrors++;
-	    return;
+	    return false;
 	}
 	t1->append	= (cptoken == T_APPEND);
 	t1->outfile	= filename;
     }
+    return true;
 }
 
 static SHELLCMD *cmd_wordlist(void)
@@ -288,7 +303,10 @@ static SHELLCMD *cmd_wordlist(void)
 	case T_FROMFILE :
 	case T_TOFILE :
 	case T_APPEND :
-	    get_redirection(t1);
+	    if(get_redirection(t1) == false) {
+		free_shellcmd(t1);
+		interrupt_parsing(0);
+	    }
 	    break;
 	}
 	gettoken();
@@ -317,11 +335,20 @@ static SHELLCMD *cmd_condition(void)
     SHELLCMD		*t1, *t2;
 
     t1 = cmd_pipeline();
-    if(token == T_AND || token == T_OR) {
+    while(token == T_AND || token == T_OR) {
+	TOKEN savetoken	= token;
+
         t2		= new_shellcmd(token == T_AND ? CMD_AND : CMD_OR);
 	t2->left	= t1;
 	gettoken();
-	t2->right	= cmd_condition();
+	t2->right	= cmd_pipeline();
+	if(t2->right == NULL) {
+	    fprintf(stderr, "command expected after '%s'\n",
+				(savetoken == T_AND) ? "&&" : "||");
+	    nerrors++;
+	    free_shellcmd(t2);
+	    interrupt_parsing(0);
+	}
 	t1		= t2;
     }
     return t1;
@@ -332,11 +359,11 @@ static SHELLCMD *cmd_sequence(void)
     SHELLCMD		*t1, *t2;
 
     t1 = cmd_condition();
-    if(token == T_SCOLON || token == T_BACKGROUND) {
-        t2	= new_shellcmd(token == T_SCOLON ? CMD_SEMICOLON : CMD_BACKGROUND);
+    while(token == T_SCOLON || token == T_BACKGROUND) {
+        t2  = new_shellcmd(token == T_SCOLON ? CMD_SEMICOLON : CMD_BACKGROUND);
 	t2->left	= t1;
 	gettoken();
-	t2->right	= cmd_sequence();
+	t2->right	= cmd_condition();
 	t1		= t2;
     }
     return t1;
@@ -352,19 +379,24 @@ static SHELLCMD *cmd_factor(void)
 	if(token != T_RIGHTB) {
 	    fprintf(stderr, "')' expected\n");
 	    nerrors++;
-	    t1 = NULL;
+	    free_shellcmd(t1);
+	    interrupt_parsing(0);
 	}
 	else {
 	    if(t1 == NULL) {
 		fprintf(stderr, "subshells may not be empty\n");
 		nerrors++;
+		interrupt_parsing(0);
 	    }
 	    t2		= new_shellcmd(CMD_SUBSHELL);
 	    t2->left	= t1;
 	    t2->right	= NULL;
 	    gettoken();
 	    while(is_redirection(token)) {
-		get_redirection(t2);
+		if(get_redirection(t2) == false) {
+		    free_shellcmd(t2);
+		    interrupt_parsing(0);
+		}
 		gettoken();
 	    }
 	    t1		= t2;
@@ -386,18 +418,25 @@ static SHELLCMD *cmd_pipeline(void)
 	   fprintf(stderr, "output cannot be both redirected and piped\n");
 	    nerrors++;
 	    free_shellcmd(t1);
-	    return NULL;
+	    interrupt_parsing(0);
 	}
         t2		= new_shellcmd(CMD_PIPE);
 	t2->left	= t1;
 	gettoken();
 	t2->right	= cmd_pipeline();
 
+	if(t2->right == NULL) {
+	    fprintf(stderr, "command expected after '|'\n");
+	    nerrors++;
+	    free_shellcmd(t2);
+	    interrupt_parsing(0);
+	}
+
 	if(t2->right != NULL && t2->right->infile != NULL) {
 	    fprintf(stderr, "input cannot be both redirected and piped\n");
 	    nerrors++;
 	    free_shellcmd(t2);
-	    return NULL;
+	    interrupt_parsing(0);
 	}
 	t1		= t2;
     }
@@ -406,14 +445,42 @@ static SHELLCMD *cmd_pipeline(void)
 
 // -------------------------- parsing stuff -----------------------------
 
-static	jmp_buf	env;
+typedef	void	(*sighandler_t)(int);
 
-static void interrupt(int which)	// control-C to interrupt parsing
+
+#if	defined(CGI_INTERFACE)
+SHELLCMD *parse_shellcmd_string(char *str)
 {
-    longjmp(env,1);
+    extern FILE		*fp;			// in parser.c
+    extern SHELLCMD	*cmd_sequence(void);	// in parser.c
+
+    SHELLCMD	*t1;
+
+    sighandler_t	old_handler;
+
+    old_handler		= signal(SIGINT, interrupt_parsing);
+    if(setjmp(env)) {
+	return NULL;
+    }
+
+    fp		= stdin;
+
+    sprintf(line, "%s\n", str);
+    ll		= strlen(line);
+    cc		= 0;
+    lc		= 1;
+    nerrors	= 0;
+    gettoken();
+    t1		= cmd_sequence();
+
+    if(token != T_NL && token != T_EOF) {
+	fputs("garbage at end of line\n", stderr);
+	nerrors++;
+    }
+    return (nerrors == 0 ? t1 : NULL);
 }
 
-typedef	void	(*sighandler_t)(int);
+#else
 
 //  READ INPUT FROM THE INDICATED FILE-POINTER AND RETURN A COMMAND-TREE
 //  ANTICIPATED THAT THIS FUNCTION WILL BE CALLED FROM main()
@@ -422,11 +489,8 @@ SHELLCMD *parse_shellcmd(FILE *_fp)
     SHELLCMD		*t1;
     sighandler_t	old_handler;
 
-    old_handler	= signal(SIGINT,interrupt);
-    if(setjmp(env)) {
-	if(interactive)
-	    fputc('\n',stdout);
-    }
+    old_handler		= signal(SIGINT, interrupt_parsing);
+    setjmp(env);
     do {
 	t1		= NULL;
 	fp		= _fp;
@@ -444,14 +508,23 @@ SHELLCMD *parse_shellcmd(FILE *_fp)
     ++prompt_no;
 
     if(token != T_NL && token != T_EOF) {
-	fputs("garbage at end of line\n", stderr);
+	fprintf(stderr, "garbage at end of line\n");
 	nerrors++;
     }
     return (nerrors == 0 ? t1 : NULL);
 }
+#endif
 
 //  DEALLOCATE ALL DYNAMICALLY ALLOCATED MEMORY IN A COMMAND-TREE
 //  ANTICIPATED THAT THIS FUNCTION WILL BE CALLED FROM main()
+static void free_redirection(SHELLCMD *t)
+{
+    if(t->infile)
+	free(t->infile);
+    if(t->outfile)
+	free(t->outfile);
+}
+
 void free_shellcmd(SHELLCMD *t)
 {
     if(t != NULL) {
@@ -462,17 +535,11 @@ void free_shellcmd(SHELLCMD *t)
 		    free(t->argv[a]);
 		free(t->argv);
 	    }
-	    if(t->infile)			// free any I/O redirection
-		free(t->infile);
-	    if(t->outfile)
-		free(t->outfile);
+	    free_redirection(t);
 	    break;
 	case CMD_SUBSHELL :
 	    free_shellcmd(t->left);
-	    if(t->infile)			// free any I/O redirection
-		free(t->infile);
-	    if(t->outfile)
-		free(t->outfile);
+	    free_redirection(t);
 	    break;
 	case CMD_AND :
 	case CMD_BACKGROUND :

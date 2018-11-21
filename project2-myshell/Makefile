@@ -2,7 +2,7 @@
 
 PROJECT =  myshell
 HEADERS =  $(PROJECT).h
-OBJ     =  myshell.o globals.o execute.o parser.o
+OBJ     =  myshell.o globals.o execute.o parser.o functions.o
 
 
 C99     =  cc -std=c99

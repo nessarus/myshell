@@ -1,10 +1,10 @@
 #include "myshell.h"
 
 /*
-   CITS2002 Project 2 2017
-   Name(s):             student-name1 (, student-name2)
-   Student number(s):   student-number-1 (, student-number-2)
-   Date:                date-of-submission
+ CITS2002 Project 2 2017
+ Name(s):     Minrui Lu (, Joshua Ng)
+ Student number(s):   22278526 (, 20163079)
+ Date:        3rd-Nov-2017
  */
 
 int check_exit(int exitstatus, int previous_exitstatus)

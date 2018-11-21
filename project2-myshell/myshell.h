@@ -1,4 +1,3 @@
-#define _POSIX_SOURCE
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -14,6 +13,12 @@
 #include <signal.h>
 
 //  Written by Chris.McDonald@uwa.edu.au, October 2017
+/*
+ CITS2002 Project 2 2017
+ Name(s):     Minrui Lu (, Joshua Ng)
+ Student number(s):   22278526 (, 20163079)
+ Date:        3rd-Nov-2017
+ */
 
 #if defined(__linux__)
     extern	char	*strdup(const char *str);
@@ -31,6 +36,7 @@
 
 #define COMMENT_CHAR		'#'	// comment character
 #define HOME_CHAR		'~'	// home directory character
+#define SLASH_CHAR      '/' // seperator of path
 
 //  ----------------------------------------------------------------------
 
@@ -114,4 +120,26 @@ extern	void check_allocation0(void *p, char *file, const char *func, int line);
 	printf("called from %s, %s() line %i:\n", __FILE__,__func__,__LINE__); \
 	print_shellcmd0(t)
 extern	void print_shellcmd0(SHELLCMD *t);
+extern int pipe_execution(SHELLCMD *t);
+extern char* edit_cd_path(char *cd_path);
+extern void cd_not_path_execution(SHELLCMD *t);
+extern int time_execution(SHELLCMD *t);
+extern void find_path_execute(SHELLCMD *t);
+extern void exit_return_value(SHELLCMD *t);
+extern void terminate_child(int pid);
+extern int sequential_execution(SHELLCMD *t);
+extern void  redirection_preparation(SHELLCMD *t);
+extern void  execute_command(SHELLCMD *t);
+extern void shell_script_execution(SHELLCMD *t);
+extern int  background_execution(SHELLCMD *t);
+extern void push_pid( pid_t newpid);
+extern void pop_pid(pid_t pid);
+extern void kill_child(void);
+
+typedef struct _l {
+    pid_t       pid;
+    struct _l   *next;
+} CHILDPIDS;// a struct to store background process pid
+
+extern CHILDPIDS   *cpids;
 
