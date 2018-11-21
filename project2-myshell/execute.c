@@ -16,7 +16,7 @@
 
 char* edit_cd_path(char *cd_path)
 {
-    cd_path = (char*) realloc(cd_path,sizeof(char)); //strlen(".:..") * sizeof(char));
+    cd_path = (char*) realloc(cd_path,sizeof(char));
     if(cd_path == NULL)
     {
         printf("Cannot allocate memory\n");
@@ -27,7 +27,7 @@ char* edit_cd_path(char *cd_path)
     DIR *dirp = opendir(current_path);
     if(dirp == NULL)
     {
-        perror( argv0 );
+        perror( "Cannot open directory" );
         exit(EXIT_FAILURE);
     }
     
@@ -47,10 +47,11 @@ char* edit_cd_path(char *cd_path)
         }
         else if( S_ISDIR( pointer->st_mode ))
         {
+            printf("dp->d_name is %s\n",dp->d_name);
             cd_path = realloc(cd_path,(strlen(cd_path)+strlen(dp->d_name)+2)*sizeof(char));
             if(cd_path == NULL)
             {
-                perror("Cannot allocate cd_path memory\n");
+                printf("Cannot allocate cd_path memory\n");
                 exit( EXIT_FAILURE );
             }
             sprintf(cd_path, "%s%s:", cd_path, dp->d_name);
@@ -67,8 +68,9 @@ void cd_not_path_execution(SHELLCMD *t)
         char previous_directory[MAXPATHLEN];
         getcwd(previous_directory, MAXPATHLEN);
         char *cd_path;
-        cd_path = (char*) malloc(0); 
+        cd_path = (char*) malloc(0); //strlen(".:..") * sizeof(char));
     
+        //            char *argv_dir = t->argv[1];
         char *end_argv_dir;
         char *argv_dir = strtok_r(t->argv[1],"/", &end_argv_dir);
         while(argv_dir)
@@ -83,6 +85,9 @@ void cd_not_path_execution(SHELLCMD *t)
             {
                 if(strcmp(temp,argv_dir)==0)
                 {
+                    printf("\n\n");
+                    printf("temp is %s\n",temp);
+                    
                     chdir(temp);
                     dir_found = true;
                     break;
@@ -101,6 +106,7 @@ void cd_not_path_execution(SHELLCMD *t)
         free(cd_path);
         return ;
 }
+
 int time_execution(SHELLCMD *t)
 {
     struct  timeval start;
@@ -135,7 +141,6 @@ void find_path_execute(SHELLCMD *t)
     {
         char temp_path[strlen(temp)+strlen(t->argv[0])];
         sprintf(temp_path,"%s/%s",temp,t->argv[0]);
-        
         FILE *fp=fopen(temp_path,"r");
         if(fp!=NULL)
         {
@@ -195,7 +200,6 @@ int sequential_execution(SHELLCMD *t)
             subshell_pid=fork();
             if(subshell_pid==0)
             {
-
                 exit(execute_shellcmd(t->left));
             }
             else
@@ -213,10 +217,56 @@ int sequential_execution(SHELLCMD *t)
     return EXIT_FAILURE;
 }
 
+void redirection_preparation(SHELLCMD *t)
+{
+    if(t->outfile != NULL)
+    {
+        int fd;
+        if(t->append==false)
+            fd = open(t->outfile,O_CREAT|O_RDWR|O_TRUNC);
+        else
+            fd = open(t->outfile,O_CREAT|O_RDWR|O_APPEND);
+        
+        if(fd==-1)
+        {
+            perror("\n ERROR: fail to create file");
+        }
+        else
+        {
+            dup2(fd,STDOUT_FILENO);
+        }
+    }
+    if(t->infile != NULL)
+    {
+        int fp = open(t->infile, O_RDONLY);
+        if(fp == -1)
+        {
+            perror( argv0 );
+        }
+        else
+        {
+           dup2(fp,STDIN_FILENO); 
+        }
+    }
+    return;
+}
+
+void execute_command(SHELLCMD *t)
+{
+    char *strtemp = strchr(t->argv[0],'/');
+    if(strtemp!=NULL)
+    {
+        exit(execv(t->argv[0],t->argv));
+    }
+    
+    find_path_execute(t);
+    exit(EXIT_FAILURE);
+    return;
+}
+
 int execute_shellcmd(SHELLCMD *t)
 {
     int  exitstatus;
-    //int return_value;
 
     if(t == NULL) {         // hmmmm, that's a problem
         exitstatus  = EXIT_FAILURE;
@@ -225,10 +275,16 @@ int execute_shellcmd(SHELLCMD *t)
     else {              // normal, exit commands
         exitstatus  = EXIT_SUCCESS;
     }
-
+    
+    int saved_stdin = dup(STDIN_FILENO);
+    int saved_stdout = dup(STDOUT_FILENO);
+    redirection_preparation(t);
+    
     if( t->type!=CMD_COMMAND )
     {
         exitstatus=sequential_execution(t);
+        dup2(saved_stdin,STDIN_FILENO);
+        dup2(saved_stdout,STDOUT_FILENO);
         return exitstatus;
     }
 
@@ -257,6 +313,7 @@ int execute_shellcmd(SHELLCMD *t)
         return exitstatus;
     }
 
+
     pid_t fpid;
     switch (fpid=fork()) // fork
     {
@@ -265,37 +322,20 @@ int execute_shellcmd(SHELLCMD *t)
             perror( argv0 );
             exit(EXIT_FAILURE);
         }
-        
+            
         case 0: // child process
         {
-            if(t->infile != NULL)
-            {
-                int fp = open(t->infile, O_RDONLY);
-                if(fp == -1)
-                {
-                    perror( argv0 );
-                    exit(EXIT_FAILURE);
-                }
-
-                dup2(fp,STDIN_FILENO); // connect file to stdin
-            }
-            char *strtemp = strchr(t->argv[0],'/');
-            if(strtemp!=NULL)
-            {
-                exit(execv(t->argv[0],t->argv));
-            }
-
-            find_path_execute(t);
-            exit(EXIT_FAILURE);
+           execute_command(t);
+           
         }
         default: // parent process
         {
             wait(&fpid);
             exitstatus=fpid;
+             O);
             break;
         }
     }
-
     return exitstatus;
 }
 
