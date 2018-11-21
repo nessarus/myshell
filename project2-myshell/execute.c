@@ -158,22 +158,27 @@ void find_path_execute(SHELLCMD *t)
 
 void exit_return_value(SHELLCMD *t)
 {
+    printf("11\n");
     if(strcmp(t->argv[0],"exit")!=0)
     {
         return;
     }
+    printf("12\n");
     if(t->argc<=1)
     {
         exit(previous_exitstatus);
     }
+    printf("13\n");
     if(strcmp(t->argv[1],"0")==0)
     {
         exit(EXIT_SUCCESS);
     }
+    printf("14\n");
     if(strcmp(t->argv[1],"1")==0)
     {
         exit(EXIT_FAILURE);
     }
+    printf("15\n");
     exit(previous_exitstatus);
 }
 
@@ -201,7 +206,22 @@ bool sequential_execution(SHELLCMD *t, int *exitstatus)
         case CMD_COMMAND:
             break;
         case CMD_SUBSHELL:
-            break;
+        {
+            pid_t subshell_pid;
+            subshell_pid=fork();
+            if(subshell_pid==0)
+            {
+                printf("subshell start\n");
+                *exitstatus = execute_shellcmd(t->left);
+                printf("subshell end\n");
+            }
+            else
+            {
+                wait(&subshell_pid);
+                *exitstatus = subshell_pid;
+                printf("parent_sub\n");
+            }
+        }
         case CMD_PIPE:
             break;
         case CMD_BACKGROUND:
@@ -216,6 +236,7 @@ int execute_shellcmd(SHELLCMD *t)
     int  exitstatus;
     //int return_value;
 
+    printf("1\n");
     if(t == NULL) {         // hmmmm, that's a problem
         exitstatus  = EXIT_FAILURE;
         return exitstatus;
@@ -223,13 +244,16 @@ int execute_shellcmd(SHELLCMD *t)
     else {              // normal, exit commands
         exitstatus  = EXIT_SUCCESS;
     }
+    printf("2\n");
 
     if( sequential_execution(t, &exitstatus) )
     {
         return exitstatus;
     }
 
+    printf("3\n");
     exit_return_value(t);
+    printf("13\n");
     
     if (strcmp(t->argv[0],"time")==0)
     {
@@ -237,6 +261,7 @@ int execute_shellcmd(SHELLCMD *t)
         return exitstatus;
     }
   
+    printf("4\n");
     if(strcmp(t->argv[0],"cd")==0)
     {
         if(t->argc==1)
@@ -254,6 +279,7 @@ int execute_shellcmd(SHELLCMD *t)
         return exitstatus;
     }
 
+    printf("5\n");
     pid_t fpid;
     fpid=fork();
 
@@ -265,6 +291,7 @@ int execute_shellcmd(SHELLCMD *t)
         {
            execv(t->argv[0],t->argv);
         }
+    printf("6\n");
 
         find_path_execute(t);
         exit(EXIT_FAILURE);
@@ -275,6 +302,7 @@ int execute_shellcmd(SHELLCMD *t)
     }
 
 
+    printf("7\n");
 
     return exitstatus;
 }
