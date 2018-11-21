@@ -13,6 +13,8 @@ char	*HOME, *PATH, *CDPATH;
 char	*argv0		= NULL;		// the program's name
 bool	interactive	= false;
 int     previous_exitstatus=0;
+int     *wait_background_pid=NULL;
+
 
 // ------------------------------------------------------------------------
 

@@ -92,7 +92,7 @@ extern	char	*argv0;		// The name of the shell, typically myshell
 extern	bool	interactive;	// true if myshell is connected to a 'terminal'
 
 extern int previous_exitstatus;
-
+extern int *gpid;
 
 //  ----------------------------------------------------------------------
 

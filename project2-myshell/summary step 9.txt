@@ -1,0 +1,51 @@
+global = null
+type = null
+wait_now = 1;
+
+see command
+execute 
+if(wait_now)
+wait(global)
+
+see background
+saved_global = global
+saved_type = type
+saved_wait_now = wait_now
+global = left_pid
+type = t->type
+direction = 0
+
+execute (left)
+
+global = saved_global
+type = saved_type
+direction = saved_direction
+
+return execute (right)
+
+
+see command
+saved_global = global
+saved_type = type
+saved_direction = direction
+
+
+set global = a (left), wait = left (right)
+
+global = null
+wait_now = 1;
+
+see command
+//child
+exec 
+
+//parent
+if(wait_now)
+	wait(global) 
+
+
+see semicolon
+save_global
+save_wait_now
+execute_shell(left)
+wait(
