@@ -8,8 +8,10 @@
 #include <dirent.h>
 #include <sys/param.h>
 #include <sys/stat.h>
-#include<sys/time.h>
-#include<fcntl.h>
+#include <sys/time.h>
+#include <fcntl.h>
+#include <signal.h>
+
 //  Written by Chris.McDonald@uwa.edu.au, October 2017
 
 #if defined(__linux__)
@@ -60,6 +62,7 @@ typedef	struct sc {
 extern SHELLCMD    *parse_shellcmd(FILE *);    // in parser.c
 extern void	free_shellcmd(SHELLCMD *);	// in parser.c
 extern int	execute_shellcmd(SHELLCMD *);	// in execute.c
+extern char directory[];
 
 
 
@@ -92,7 +95,8 @@ extern	char	*argv0;		// The name of the shell, typically myshell
 extern	bool	interactive;	// true if myshell is connected to a 'terminal'
 
 extern int previous_exitstatus;
-extern int *gpid;
+extern bool  semicolon_left_execution;
+
 
 //  ----------------------------------------------------------------------
 

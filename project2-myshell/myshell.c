@@ -18,7 +18,9 @@ int check_exit(int exitstatus, int previous_exitstatus)
 
 int main(int argc, char *argv[])
 {
-//  REMEMBER THE PROGRAM'S NAME (TO REPORT ANY LATER ERROR MESSAGES)
+    getcwd(directory,MAXPATHLEN);// get the current working directory
+    strcat(directory,"/myshell");
+    //  REMEMBER THE PROGRAM'S NAME (TO REPORT ANY LATER ERROR MESSAGES)
     argv0	= (argv0 = strrchr(argv[0],'/')) ? argv0+1 : argv[0];
     argc--;				// skip 1st command-line argument
     argv++;
