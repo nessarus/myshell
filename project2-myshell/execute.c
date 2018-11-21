@@ -176,7 +176,7 @@ void exit_return_value(SHELLCMD *t)
     exit(previous_exitstatus);// if the command after exit is not 0 or 1
 }
 
-void background_ended(int pid)
+void terminate_child(int pid)
 {
     printf("Background PID ended: %d\n", getpid());
 }
@@ -217,8 +217,8 @@ int sequential_execution(SHELLCMD *t)
         }
         case CMD_BACKGROUND:
         {
+            signal(SIGTERM, (void (*)(int))terminate_child);
             pid_t background_pid;
-            signal(SIGTERM, background_ended);
             if(t->left->type == CMD_SEMICOLON)
             {
                 previous_exitstatus = execute_shellcmd(t->left->left);
@@ -233,7 +233,7 @@ int sequential_execution(SHELLCMD *t)
                     {
                         printf("Started %d\n", getpid());
                         int exitstatus = execute_shellcmd(t->right);
-                        kill(getppid(),SIGTERM); 
+                        kill(getpid(),SIGTERM);
                         exit(exitstatus);
                     }
                     default:
@@ -255,7 +255,7 @@ int sequential_execution(SHELLCMD *t)
                     {
                         printf("Started %d\n", getpid());
                         int exitstatus = execute_shellcmd(t->right);
-                        kill(getppid(),SIGTERM);
+                        kill(getpid(),SIGTERM);
                         exit(exitstatus);
                     }
                     default:
