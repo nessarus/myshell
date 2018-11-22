@@ -2,7 +2,6 @@
 The goal of this project is to analyse wifi transmission logs. 
 
 ## UNFORTUNATELY, FINAL SOLUTION WAS LOST AFTER SUBMISSION. CURRENT SOLUTION CONTAINS BUGS.
-## SEE SAMPLE SOLUTION (wifistats-sample.c) FOR WORKING SOLUTION. 
 
 The logs are kept in columns:  
 - Time (seconds.microseconds)  
