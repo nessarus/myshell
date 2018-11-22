@@ -22,7 +22,7 @@ To run the program:
 \>> ./myshell
 
 ## CITS2002 System Programming
-myShell is a student project from the UWA course CITS2002 System Programming. Skeleton C99 source code files were provided by the University as assistance to develop this program. 
+myShell is a student project from the University of Western Australia course CITS2002 System Programming. Skeleton C99 source code files were provided by the University as assistance to develop this program. 
 
 ## Preparation and Labs
 Preparation work from C99 techniques labs have also been included.
