@@ -1,3 +1,6 @@
+#if defined(__linux__)
+    #define _POSIX_SOURCE
+#endif
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -25,6 +28,7 @@
     extern	int	fileno(FILE *fp);
     
     extern char *strtok_r(char *, const char *, char **);
+
     #define BUFFER_SIZE 1024
 #endif
 
