@@ -4,10 +4,12 @@ myshell is a basic implementation of a unix shell using the C99 programming lang
 
 ## Features
 * macOS and Linux supported 
-* Execute external commands (e.g. /usr/bin/cal -y)
+* Execute external commands (e.g. /usr/bin/cal -y)  
+![Alt Text](https://media.giphy.com/media/t8LoBPg52gGxBhG6C4/giphy.gif)  
 * Search path (users do not need to provide full address)
 * Execute internal commands: exit, cd, time
-* Sequential execution (e.g. ";", "&&", "||")
+* Sequential execution (e.g. ";", "&&", "||")  
+![Alt Text](https://media.giphy.com/media/23ex1hrWYOef7MNU1r/giphy.gif)  
 * Sub-shell execution (e.g. >> (commands) )
 * Stdin and stdout file (e.g. command < infile, command > outfile, command >> outfile (appends))
 * Pipelines (e.g. command1 | commmand2)
@@ -16,10 +18,17 @@ myshell is a basic implementation of a unix shell using the C99 programming lang
 
 ## How to run
 To build run the Makefile file in the terminal:  
+```
 \>> make
-
+```  
+![Alt Text](https://media.giphy.com/media/WgO9PwZ1qvt1CoV6FW/giphy.gif)
+  
 To run the program:  
+```
 \>> ./myshell
+```  
+![Alt Text](https://media.giphy.com/media/48NvlVthTh2nhPC2uj/giphy.gif)
+  
 
 ## CITS2002 System Programming
 myShell is a student project from the University of Western Australia course CITS2002 System Programming. Skeleton C99 source code files were provided by the University as assistance to develop this program. 
