@@ -1,7 +1,7 @@
 # myshell
 
 myshell is a basic implementation of a unix shell using the C99 programming language.  
-![Alt Text](https://giphy.com/gifs/5QXkxncWSfkOvhwc4F/html5)  
+![Alt Text](https://media.giphy.com/media/5QXkxncWSfkOvhwc4F/giphy.gif)  
 
 ## Features
 * macOS and Linux supported 
