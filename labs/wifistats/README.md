@@ -1,8 +1,6 @@
 # Project 1: wifistats.c
 The goal of this project is to analyse wifi transmission logs. 
 
-## UNFORTUNATELY, FINAL SOLUTION WAS LOST AFTER SUBMISSION. CURRENT SOLUTION MAY CONTAINS BUGS.
-
 The logs are kept in columns:  
 - Time (seconds.microseconds)  
 - Transmitter's MAC address  
@@ -17,8 +15,10 @@ Time | transmitter | receiver | packet length
 
 Transmission log sample:  
 > sample-packets.txt
+> sample-packets-large.txt
 
-## Features
+## How to use:
+1.
 > prompt> ./wifistats *what* **packets**
 
 *what* : 't' or 'r' requests statistics about WiFi transmitters or receivers respectively.  
@@ -36,6 +36,7 @@ MAC Address | packet sum
 84:1b:5e:a8:bf:7c|	259
 74:e2:f5:17:96:89|	138
 
+2.
 > prompt> ./wifistats what packets ***OUIfile***
 
 ***OUIfile*** : Names of the vendors 
