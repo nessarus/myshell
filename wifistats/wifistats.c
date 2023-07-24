@@ -56,14 +56,22 @@
 #define UNKNOWN_VENDOR_NAME     "UNKNOWN-VENDOR"
 
 /**
+ * @brief Requested device categories for report.
+ */
+typedef enum Requested
+{
+    TRANSMITTERS,
+    RECEIVERS
+} Requested;
+
+/**
  * @brief A data structure for the requested report query.
  */
 typedef struct Request
 {
     char *packets_filename;
     char *OUIs_filename;
-    bool receivers_requested;
-    bool transmitters_requested;
+    Requested requested;
     bool ouifile_provided;
 } Request;
 
@@ -145,22 +153,22 @@ Request parse_request(int argc, char *argv[])
         break;
 
     default:
-        fprintf(stderr, "Need input arguements.");
+        fprintf(stderr, "Need input arguements.\n");
         exit(EXIT_FAILURE);
     }
 
     switch (argv[1][0])
     {
     case 'r':
-        request.receivers_requested = true;
+        request.requested = RECEIVERS;
         break;
 
     case 't':
-        request.transmitters_requested = true;
+        request.requested = TRANSMITTERS;
         break;
 
     default:
-        fprintf(stderr, "Unexpected request: %c", argv[1][0]);
+        fprintf(stderr, "Unexpected request: %c\n", argv[1][0]);
         exit(EXIT_FAILURE);
     }
 
@@ -186,7 +194,7 @@ bool is_broadcast(char *address)
  * @param line      A line containing the packet meta data.
  * @return Mac - A data structure for a mac's packet meta data.
  */
-Mac parse_packet(const Request *request, char *line)
+Mac parse_mac(const Request *request, char *line)
 {
     Mac mac = {0};
 
@@ -200,7 +208,7 @@ Mac parse_packet(const Request *request, char *line)
 
     if (token != NULL)
     {
-        if (request->transmitters_requested)
+        if (request->requested == TRANSMITTERS)
         {
             // Parse transmitter address.
             strcpy(mac.address, token);
@@ -210,7 +218,7 @@ Mac parse_packet(const Request *request, char *line)
 
     if (token != NULL)
     {
-        if (request->receivers_requested)
+        if (request->requested == RECEIVERS)
         {
             // Parse reciever address
             strcpy(mac.address, token);
@@ -288,11 +296,19 @@ Vendor parse_vendor(char *line)
 /**
  * @brief Parse the OUI file for vendor data.
  * 
- * @param oui       A pointer to the oui data.
  * @param request   A pointer to the request data.
+ * @return Oui -    A pointer to the oui data.
  */
-void parse_ouifile(Oui *oui, Request *request)
+Oui *parse_ouifile(Request *request)
 {
+    Oui *oui = malloc(sizeof(Oui));
+
+    if (oui == NULL)
+    {
+        fprintf(stderr, "Failed to allocate memory when parsing oui\n.");
+        exit(EXIT_FAILURE);
+    }
+    
     FILE *fp = fopen(request->OUIs_filename, "r");
 
     if(fp == NULL) 
@@ -305,10 +321,18 @@ void parse_ouifile(Oui *oui, Request *request)
 
     while (fgets(line, BUFSIZ, fp) != NULL)
     {
+        if(oui->length >= MAX_NUM_OUIS) 
+        {
+            fprintf(stderr, "Parsing too many unique oui address.\n");
+            exit(EXIT_FAILURE);
+        }
+
         oui->vendors[oui->length++] = parse_vendor(line);
     }
 
     fclose(fp);
+
+    return oui;
 }
 
 /**
@@ -354,12 +378,19 @@ int find_index_macs(const Macs *macs, const char *address)
 /**
  * @brief Parses the packet file for the macs' packet meta data.
  * 
- * @param macs      A pointer to the macs data.
  * @param request   A pointer to the request data.
- * @return Packets - A data structure for the packets data.
+ * @return Packets - A pointer to the macs data.
  */
-void parse_packetfile(Macs *macs, const Request *request)
+Macs *parse_macs(const Request *request)
 {
+    Macs *macs = malloc(sizeof(Macs));
+
+    if (macs == NULL)
+    {
+        fprintf(stderr, "Failed to allocate memory when parsing macs.");
+        exit(EXIT_FAILURE);
+    }
+
     FILE *fp = fopen(request->packets_filename, "r");
 
     if(fp == NULL) 
@@ -372,7 +403,7 @@ void parse_packetfile(Macs *macs, const Request *request)
 
     while (fgets(line, BUFSIZ, fp) != NULL)
     {
-        Mac mac = parse_packet(request, line);
+        Mac mac = parse_mac(request, line);
 
         if (mac.broadcast)
         {
@@ -384,6 +415,12 @@ void parse_packetfile(Macs *macs, const Request *request)
 
         if (index == INDEX_NOT_FOUND)
         {
+            if(macs->length >= MAX_NUM_MAC_ADDRESSES) 
+            {
+                fprintf(stderr, "Parsing too many unique mac address.\n");
+                exit(EXIT_FAILURE);
+            }
+
             macs->mac[macs->length++] = mac;
         }
         else
@@ -393,6 +430,8 @@ void parse_packetfile(Macs *macs, const Request *request)
     }
 
     fclose(fp);
+    
+    return macs;
 }
 
 /**
@@ -512,14 +551,12 @@ int main(int argc, char *argv[])
 {
     Request request = parse_request(argc, argv);
 
-    Macs *macs = malloc(sizeof(Macs));
-    parse_packetfile(macs, &request);
+    Macs *macs = parse_macs(&request);
 
     Oui *oui = NULL;
     if (request.ouifile_provided)
     {
-        oui = malloc(sizeof(Oui));
-        parse_ouifile(oui, &request);
+        oui = parse_ouifile(&request);
     }
 
     Report report = create_report(macs, oui, &request);
@@ -527,20 +564,19 @@ int main(int argc, char *argv[])
     int pid;
     int fd[2];  // Array to hold pipe. 0 for read, 1 for write
     pipe(fd);   // Create pipe.
-    int status = EXIT_SUCCESS;
 
     switch (pid = fork())   // fork process
     {
     case -1:
-        perror("Fail to create child (new) process.");
-        status = EXIT_FAILURE;
+        perror("Fail to create child (new) process.\n");
+        exit(EXIT_FAILURE);
         break;
     case 0:                     // Child process
         close(fd[1]);           // Close pipe's write stream.
         dup2(fd[0], 0);         // Replace stdin stream with pipe's read stream.
         close(fd[0]);           // Close extra copy of pipe's read stream.
         sort_report(&request);  // Sort read stream until end-of-file received. 
-        status = EXIT_FAILURE;  // Should only return on execv failure.
+        exit(EXIT_FAILURE);     // Should only return on execv failure.
         break;
     default:                    // Parent process
         close(fd[0]);           // Close pipe's read stream.
@@ -556,5 +592,5 @@ int main(int argc, char *argv[])
     free(macs);
     free(oui);
 
-    return status;
+    return EXIT_SUCCESS;
 }
