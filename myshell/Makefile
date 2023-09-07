@@ -1,22 +1,23 @@
 # A Makefile to build our 'myshell' project
 
-PROJECT =  myshell
-HEADERS =  $(PROJECT).h
-OBJ     =  myshell.o globals.o execute.o parser.o functions.o
+PROJECT =  	myshell
+HEADERS =  	$(PROJECT).h
+OBJ     =  	myshell.o globals.o external.o parser.o filepaths.o searchpath.o \
+			simplemap.o internal.o subshell.o redirection.o pipeline.o shellscript.o \
+			set.o background.o
 
 
-C99     =  cc -std=c99
-CFLAGS  =  -Wall -pedantic -Werror 
+COMPILE =  clang -std=c99 -g
+CFLAGS  =  -Wall -pedantic -Werror -fcolor-diagnostics -fansi-escape-codes
 
 
 $(PROJECT) : $(OBJ)
-	$(C99) $(CFLAGS) -o $(PROJECT) $(OBJ) -lm
+	$(COMPILE) $(CFLAGS) -o $(PROJECT) $(OBJ) -lm
 
 
 %.o : %.c $(HEADERS)
-	$(C99) $(CFLAGS) -c $<
+	$(COMPILE) $(CFLAGS) -c $<
 
 
 clean:
 	rm -f $(PROJECT) $(OBJ)
-
