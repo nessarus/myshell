@@ -16,13 +16,13 @@
  * 
  * @return A static set data structure.
  */
-static struct SET* get_background_pids(void)
+static SET* get_background_pids(void)
 {
-    static struct SET* background_pids = NULL;
+    static SET* background_pids = NULL;
 
     if (background_pids == NULL)
     {
-        background_pids = set_create();
+        background_pids = set_new();
     }
 
     return background_pids;
@@ -37,13 +37,13 @@ static void handler_child_final(int signum)
 {
     pid_t pid;
     int status;
-    struct SET* background_pids = get_background_pids();
+    SET* background_pids = get_background_pids();
 
     // Loop through all child processes that have changed their state.
     // WNOHANG: Return immediately if no child has changed its state.
     while ((pid = waitpid(-1, &status, WNOHANG)) > 0)   
     {   
-        if (!set_contains(background_pids, pid))
+        if (!set_contains(background_pids, &pid, sizeof(pid)))
         {
             continue;
         }
@@ -61,7 +61,7 @@ static void handler_child_final(int signum)
         }
 
         printf("Child %d exited with status %d\n", pid, exitstatus);
-        set_remove(background_pids, pid);
+        set_remove(background_pids, &pid, sizeof(pid));
 
         if (set_size(background_pids) == 0)
         {
@@ -106,8 +106,8 @@ int background_shellcmd(SHELLCMD *t)
         exit(exitstatus);
     }
 
-    struct SET* background_pids = get_background_pids();
-    set_insert(background_pids, fpid);
+    SET* background_pids = get_background_pids();
+    set_insert(background_pids, &fpid, sizeof(fpid));
     return EXIT_SUCCESS;
 }
 
@@ -116,14 +116,13 @@ int background_shellcmd(SHELLCMD *t)
  */
 void background_exit(void)
 {
-    struct SET* background_pids = get_background_pids();
-    struct SET_ITERATOR* it = set_iterator_create(background_pids);
+    SET* background_pids = get_background_pids();
+    ITERATOR it = set_iterator(background_pids);
 
-    while (set_iterator_has_next(it))
+    while (iterator_has_next(&it))
     {
-        int pid = set_iterator_get(it);
-        kill(SIGTERM, pid);
-        set_iterator_next(it);
+        pid_t *pid = (pid_t *) iterator_next(&it, NULL);
+        kill(SIGTERM, *pid);
     }
 
     set_free(background_pids);

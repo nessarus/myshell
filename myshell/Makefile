@@ -2,9 +2,8 @@
 
 PROJECT =  	myshell
 HEADERS =  	$(PROJECT).h
-OBJ     =  	myshell.o globals.o external.o parser.o filepaths.o searchpath.o \
-			simplemap.o internal.o subshell.o redirection.o pipeline.o shellscript.o \
-			set.o background.o
+SRC     =  	$(wildcard *.c)
+OBJ     =  	$(SRC:.c=.o)
 
 
 COMPILE =  clang -std=c99 -g

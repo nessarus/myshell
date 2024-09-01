@@ -6,21 +6,18 @@
  * @date    2023-09-07
  */
 
-#include "stdbool.h"
+#include "iterator.h"
+#include <stdbool.h>
 
-struct SET;
+typedef struct SET SET;
 
-struct SET*     set_create              (void);
-int             set_size                (struct SET *set);
-bool            set_contains            (struct SET *set, int value);
-bool            set_insert              (struct SET *set, int value);
-bool            set_remove              (struct SET *set, int value);
-void            set_free                (struct SET *set);
+SET*            set_new                 (void);
+size_t          set_size                (const SET *set);
+bool            set_contains            (const SET *set, const void *data, size_t length);
+bool            set_insert              (SET *set, const void *data, size_t legnth);
+bool            set_remove              (SET *set, const void *data, size_t length);
+void            set_free                (SET *set);
 
-struct SET_ITERATOR;
-
-struct SET_ITERATOR* set_iterator_create(struct SET* set);
-void            set_iterator_next       (struct SET_ITERATOR* it);
-bool            set_iterator_has_next   (struct SET_ITERATOR* it);
-int             set_iterator_get        (struct SET_ITERATOR* it);
-void            set_iterator_free       (struct SET_ITERATOR* it);
+ITERATOR        set_iterator            (SET* set);
+bool            set_iterator_has_next   (ITERATOR* it);
+void*           set_iterator_next       (ITERATOR* it, size_t *length);
