@@ -11,22 +11,7 @@
 #include <signal.h>
 #include <unistd.h>
 
-/**
- * @brief Get the set of child background pids.
- * 
- * @return A static set data structure.
- */
-static SET* get_background_pids(void)
-{
-    static SET* background_pids = NULL;
-
-    if (background_pids == NULL)
-    {
-        background_pids = set_new();
-    }
-
-    return background_pids;
-}
+SET background_pids = { 0 };
 
 /**
  * @brief   Handler for when child terminate signal.
@@ -37,13 +22,12 @@ static void handler_child_final(int signum)
 {
     pid_t pid;
     int status;
-    SET* background_pids = get_background_pids();
 
     // Loop through all child processes that have changed their state.
     // WNOHANG: Return immediately if no child has changed its state.
     while ((pid = waitpid(-1, &status, WNOHANG)) > 0)   
     {   
-        if (!set_contains(background_pids, &pid, sizeof(pid)))
+        if (!set_contains(&background_pids, pid))
         {
             continue;
         }
@@ -61,9 +45,9 @@ static void handler_child_final(int signum)
         }
 
         printf("Child %d exited with status %d\n", pid, exitstatus);
-        set_remove(background_pids, &pid, sizeof(pid));
+        set_remove(&background_pids, pid);
 
-        if (set_size(background_pids) == 0)
+        if (set_size(&background_pids) == 0)
         {
             signal(SIGCHLD, SIG_DFL);
             break;
@@ -106,8 +90,7 @@ int background_shellcmd(SHELLCMD *t)
         exit(exitstatus);
     }
 
-    SET* background_pids = get_background_pids();
-    set_insert(background_pids, &fpid, sizeof(fpid));
+    set_insert(&background_pids, fpid);
     return EXIT_SUCCESS;
 }
 
@@ -116,8 +99,7 @@ int background_shellcmd(SHELLCMD *t)
  */
 void background_exit(void)
 {
-    SET* background_pids = get_background_pids();
-    ITERATOR it = set_iterator(background_pids);
+    ITERATOR it = set_iterator(&background_pids);
 
     while (iterator_has_next(&it))
     {
@@ -125,5 +107,5 @@ void background_exit(void)
         kill(SIGTERM, *pid);
     }
 
-    set_free(background_pids);
+    set_free(&background_pids);
 }

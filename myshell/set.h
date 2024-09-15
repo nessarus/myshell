@@ -9,13 +9,23 @@
 #include "iterator.h"
 #include <stdbool.h>
 
-typedef struct SET SET;
+struct NODE;
 
-SET*            set_new                 (void);
+/**
+ * @brief A set structure for the hash table.
+ */
+typedef struct SET
+{
+    struct NODE *nodes;     // An array of nodes
+    size_t size;     // The amount of items in the set.
+    size_t capacity; // The number of nodes in the array.
+} SET;
+
+SET             set_init                (void);
 size_t          set_size                (const SET *set);
-bool            set_contains            (const SET *set, const void *data, size_t length);
-bool            set_insert              (SET *set, const void *data, size_t legnth);
-bool            set_remove              (SET *set, const void *data, size_t length);
+bool            set_contains            (const SET *set, int data);
+bool            set_insert              (SET *set, int data);
+bool            set_remove              (SET *set, int data);
 void            set_free                (SET *set);
 
 ITERATOR        set_iterator            (SET* set);

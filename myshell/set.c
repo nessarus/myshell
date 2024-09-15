@@ -21,41 +21,20 @@
  */
 typedef struct NODE
 {
-    void *data; // the element stored in the node
-    size_t length;
+    int data; // the element stored in the node
+    bool has_data;
     double hash;
 } NODE;
-
-/**
- * @brief A set structure for the hash table.
- */
-struct SET
-{
-    NODE *nodes; // An array of nodes
-    size_t size; // The amount of items in the set.
-    size_t capacity;    // The number of nodes in the array.
-};
 
 /**
  * @brief A function that scrambles the data into a hash.
  *
  * @param data      The data to be hashed.
- * @param length    the length of the data.
  * @return Return's a double between 0 and 1.
  */
-static double hashdata(const void *data, size_t length)
+static double hashdata(int data)
 {
-    // Prime number for combining hash values
-    const uint8_t prime = 101;
-    size_t value = 0;
-    const uint8_t *const hex = (const uint8_t *const)data;
-
-    for (size_t i = 0; i < length; i++)
-    {
-        value = value * prime * hex[i];
-    }
-
-    return fmod(value * GOLDEN_RATIO, 1.0);
+    return fmod(((double) data) * GOLDEN_RATIO, 1.0);
 }
 
 /**
@@ -63,11 +42,9 @@ static double hashdata(const void *data, size_t length)
  *
  * @return A memory allocated set.
  */
-SET* set_new(void)
+SET set_init(void)
 {
-    SET *set = (SET *) malloc(sizeof(SET));
-    *set = (SET){.nodes = calloc(1, sizeof(NODE)), .size = 0, .capacity = 1};
-    return set;
+    return (SET){};
 }
 
 /**
@@ -86,26 +63,23 @@ size_t set_size(const SET *set)
  *
  * @param set       The set data structure.
  * @param data      The data to check.
- * @param length    The length of the data.
  * @return True if element is in the set and false otherwise.
  */
-bool set_contains(const SET *set, const void *data, size_t length)
+bool set_contains(const SET *set, int data)
 {
-    const double hash = hashdata(data, length);
+    const double hash = hashdata(data);
     const size_t i = (size_t)(hash * set->capacity);
 
     for (int j = 0; j < set->capacity; j++)
     {
         const NODE *const node = set->nodes + ((i + j) % set->capacity);
 
-        if (node->data == NULL)
+        if (!node->has_data)
         {
             break;
         }
 
-        if ((node->hash == hash) &&
-            (node->length == length) &&
-            (memcmp(node->data, data, length) == 0))
+        if (node->data == data)
         {
             return true;
         }
@@ -116,7 +90,7 @@ bool set_contains(const SET *set, const void *data, size_t length)
 
 /**
  * @brief Helper function to insert a node into the set.
- * 
+ *
  * @param set   A pointer to a set.
  * @param node  The node to insert.
  */
@@ -128,7 +102,7 @@ static void set_insert_node(SET *set, const NODE *node)
     {
         NODE *const temp = set->nodes + ((i + j) % set->capacity);
 
-        if (temp->data == NULL)
+        if (!temp->has_data)
         {
             *temp = *node;
             return;
@@ -137,10 +111,10 @@ static void set_insert_node(SET *set, const NODE *node)
 }
 
 /**
- * @brief Resize the capacity, the array size, of the set.
+ * @brief A helper function to resize the capacity, the array size, of the set.
  *
  * @param set       A pointer to a set.
- * @param capacity  The new set capacity.
+ * @param capacity  Size of capacity to resize to.
  * @return true     Capacity resize success.
  * @return false    Capacity resize failure.
  */
@@ -148,11 +122,7 @@ static bool set_resize_capacity(SET *set, size_t capacity)
 {
     SET saved = *set;
     set->capacity = capacity;
-    if (set->capacity < MINIMUM_LOAD)
-    {
-        set->capacity = MINIMUM_LOAD;
-    }
-    set->nodes = calloc(set->capacity, sizeof(NODE));
+    set->nodes = calloc(capacity, sizeof(NODE));
 
     if (!set->nodes)
     {
@@ -164,7 +134,7 @@ static bool set_resize_capacity(SET *set, size_t capacity)
     {
         const NODE *const node = saved.nodes + i;
 
-        if (node->data)
+        if (node->has_data)
         {
             set_insert_node(set, node);
         }
@@ -179,56 +149,57 @@ static bool set_resize_capacity(SET *set, size_t capacity)
  * already present and returns if successful or not.
  *
  * @param set   The set data structure.
- * @param value The value to insert.
- * @return True if the value was inserted successfully and false otherwise.
+ * @param data  The data to insert.
+ * @return True if the data was inserted successfully and false otherwise.
  */
-bool set_insert(SET *set, const void *data, size_t length)
+bool set_insert(SET *set, int data)
 {
-    const double hash = hashdata(data, length);
+    const double hash = hashdata(data);
+    NODE node = {.data = data, .hash = hash, .has_data = true};
     size_t i = (size_t)(hash * set->capacity);
+    size_t j;
 
-    for (int j = 0; j < set->capacity; j++)
+    for (j = 0; j < set->capacity; j++)
     {
-        NODE *node = set->nodes + (i + j) % set->capacity;
+        NODE *const temp = set->nodes + (i + j) % set->capacity;
 
-        if (!node->data)
+        if (!temp->has_data)
         {
+            *temp = node;
+            set->size++;
             break;
         }
 
-        if ((node->hash == hash) &&
-            (node->length == length) &&
-            (memcmp(node->data, data, length) == 0))
+        if (temp->data == data)
         {
             return false;
         }
     }
 
-    NODE node = {.data = malloc(length), .length = length, .hash = hash};
-    if (!node.data)
+    if (j == set->capacity)
     {
-        return false;
-    }
-
-    if ((set->size * MINIMUM_LOAD) >= set->capacity)
-    {
-        if (!set_resize_capacity(set, set->capacity * MINIMUM_LOAD))
+        j += !set->capacity;
+        if (!set_resize_capacity(set, j * MINIMUM_LOAD))
         {
-            free(node.data);
             return false;
         }
+
+        set_insert_node(set, &node);
+        set->size++;
     }
 
-    memcpy(node.data, data, length);
-    set_insert_node(set, &node);
-    set->size++;
+    if ((set->size * MINIMUM_LOAD) > set->capacity)
+    {
+        set_resize_capacity(set, set->capacity * MINIMUM_LOAD);
+    }
+
     return true;
 }
 
 /**
- * @brief A helper function to remove the gap made by 
+ * @brief A helper function to remove the gap made by
  *  removing an element.
- * 
+ *
  * @param set   The set to clean up.
  * @param index The index of the removed element.
  */
@@ -242,7 +213,7 @@ static void set_cleanup(const SET *set, size_t index)
         const size_t i = ((index + j) % set->capacity);
         NODE *const node = set->nodes + i;
 
-        if (!node->data)
+        if (!node->has_data)
         {
             break;
         }
@@ -252,7 +223,7 @@ static void set_cleanup(const SET *set, size_t index)
         {
             *empty = *node;
             empty = node;
-            empty->data = NULL;
+            empty->has_data = false;
             iempty = i;
         }
     }
@@ -264,57 +235,51 @@ static void set_cleanup(const SET *set, size_t index)
  *
  * @param set       The set data structure.
  * @param data      The data to remove.
- * @param length    The length of the data.
  * @return True if the value was successfully removed and false otherwise.
  */
-bool set_remove(SET *set, const void *data, size_t length)
+bool set_remove(SET *set, int data)
 {
-    const double hash = hashdata(data, length);
-    const size_t ihash = (size_t)(hash * set->capacity);
-    NODE *node = NULL;
-    size_t i = ihash;
+    const double hash = hashdata(data);
+    const size_t i = (size_t)(hash * set->capacity);
+    size_t j;
+    size_t inode = i;
 
-    for (int j = 0; j < set->capacity; j++)
+    for (j = 0; j < set->capacity; j++)
     {
-        i = (ihash + j) % set->capacity;
-        NODE *const temp = set->nodes + i;
+        inode = (i + j) % set->capacity;
+        NODE *const node = set->nodes + inode;
 
-        if (!temp->data)
+        if (!node->has_data)
         {
             return false;
         }
 
-        if ((temp->hash == hash) &&
-            (temp->length == length) &&
-            (memcmp(temp->data, data, length) == 0))
+        if (node->data == data)
         {
-            node = temp;
+            *node = (NODE){};
+            set->size--;
             break;
         }
     }
 
-    if (node)
+    if (j == set->capacity)
     {
-        free(node->data);
-        node->data = NULL;
-        set->size--;
-
-        if ((set->size * MAXIMUM_LOAD) <= set->capacity)
-        {
-            if (!set_resize_capacity(set, set->capacity/2))
-            {
-                return false;
-            }
-        }
-        else
-        {
-            set_cleanup(set, i);
-        }
-
-        return true;
+        return false;
     }
 
-    return false;
+    if ((set->size * MAXIMUM_LOAD) <= set->capacity)
+    {
+        if (!set_resize_capacity(set, set->capacity / MINIMUM_LOAD))
+        {
+            return false;
+        }
+    }
+    else
+    {
+        set_cleanup(set, inode);
+    }
+
+    return true;
 }
 
 /**
@@ -325,13 +290,8 @@ bool set_remove(SET *set, const void *data, size_t length)
  */
 void set_free(SET *set)
 {
-    ITERATOR it = set_iterator(set);
-    while (iterator_has_next(&it))
-    {
-        free(iterator_next(&it, NULL));
-    }
     free(set->nodes);
-    free(set);
+    *set = (SET){};
 }
 
 /**
@@ -370,15 +330,16 @@ bool set_iterator_has_next(ITERATOR *it)
 void *set_iterator_next(ITERATOR *it, size_t *length)
 {
     void *data = NULL;
-    SET *const set = (SET *) it->container;
+    const SET *const set = (SET *)it->container;
     for (size_t i = it->index; i < set->capacity; i++)
     {
-        if (set->nodes[i].data)
+        const NODE *const node = set->nodes + i;
+        if (node->has_data)
         {
-            data = set->nodes[i].data;
+            data = (void *) &node->data;
             if (length)
             {
-                *length = set->nodes[i].length;
+                *length = sizeof(node->data);
             }
             it->index = i + 1;
             it->count++;
