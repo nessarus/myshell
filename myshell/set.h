@@ -21,7 +21,7 @@ typedef struct SET
     size_t capacity; // The number of nodes in the array.
 } SET;
 
-SET             set_init                (void);
+SET             set_init                (size_t capacity);
 size_t          set_size                (const SET *set);
 bool            set_contains            (const SET *set, int data);
 bool            set_insert              (SET *set, int data);

@@ -39,12 +39,17 @@ static double hashdata(int data)
 
 /**
  * @brief A function that creates a new set and returns its pointer.
- *
+ * @param capacity      Initalize capacity of the set.
  * @return A memory allocated set.
  */
-SET set_init(void)
+SET set_init(size_t capacity)
 {
-    return (SET){};
+    SET set = {.nodes = calloc(capacity, sizeof(NODE))};
+    if (set.nodes)
+    {
+        set.capacity = capacity;
+    }
+    return set;
 }
 
 /**
