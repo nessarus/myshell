@@ -49,9 +49,9 @@ then the Vendor is NETGEAR (84-1B-5E)
 Output: vendor OUI, vendor name, packet sum
 
 Example:  
-\>> ./wifistats t sample-packets.txt
+\>> ./wifistats t sample-packets.txt sample-OUIfile-small
    
-MAC Address | packet sum sample-OUIfile-small
+MAC Address | vendor packet sum 
  --- | ---
 84:1b:5e|	NETGEAR	1188
 ??:??:??|	UNKNOWN-VENDOR	951
