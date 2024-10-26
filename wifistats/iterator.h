@@ -16,10 +16,9 @@ typedef struct ITERATOR
 {
     void *container;
     size_t index;
-    size_t count;
     bool (*has_next)(struct ITERATOR *it);
-    void* (*next)(struct ITERATOR *it, size_t *size);
+    void* (*next)(struct ITERATOR *it);
 } ITERATOR;
 
 bool iterator_has_next(ITERATOR *it);
-void* iterator_next(ITERATOR *it, size_t *size);
+void* iterator_next(ITERATOR *it);

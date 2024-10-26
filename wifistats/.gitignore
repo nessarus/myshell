@@ -1,0 +1,12 @@
+# Build artifacts
+build/
+dist/
+*.o
+*.so
+*.a
+
+# IDE-specific files
+.vscode/
+*.DS_Store
+
+*.dSYM

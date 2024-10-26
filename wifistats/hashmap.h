@@ -7,35 +7,43 @@
  */
 
 #include "iterator.h"
-#include "pair.h"
 #include <stdbool.h>
 
 /**
- * @brief A node structure for the linked list.
+ * @brief Interface for the hashmap to work with custom container (node).
  */
-typedef struct NODE
+typedef struct
 {
-    PAIR entry;
-    double hash;
-} NODE;
+    void*   (*get_key)      (const void *node);
+    size_t  (*get_hash)     (const void *node);
+    bool    (*equals_key)   (const void *key1, const void *key2);
+    size_t  (*hash_key)     (const void *key);
+} HashMapInterface;
 
 /**
  * @brief A hashmap structure for the hash table.
  */
-typedef struct HASHMAP
+typedef struct HashMap
 {
-    struct NODE *nodes;     // An array of nodes
-    size_t size;     // The amount of items in the hashmap.
-    size_t capacity; // The number of nodes in the array.
-} HASHMAP;
+    HashMapInterface interface;     // Hashing customisations.
+    void **nodes;                    // An array of nodes
+    size_t size;        // The amount of items in the hashmap.
+    size_t capacity;    // The number of nodes in the array.
+} HashMap;
 
-bool            hashmap_resize_capacity     (HASHMAP *hashmap, size_t capacity);
-size_t          hashmap_size                (const HASHMAP *hashmap);
-bool            hashmap_contains            (const HASHMAP *hashmap, void *key, size_t size);
-bool            hashmap_insert              (HASHMAP *hashmap, PAIR entry, PAIR *result);
-bool            hashmap_remove              (HASHMAP *hashmap, void *key, size_t size);
-void*           hashmap_get                 (HASHMAP *hashmap, void *key, size_t key_size, size_t *value_size);
+void** hashmap_resize(HashMap *hashmap, void *nodes[], size_t capacity);
+bool hashmap_contains(const HashMap *hashmap, const void *key);
 
-ITERATOR        hashmap_iterator            (HASHMAP* hashmap);
+typedef struct HashMapResult
+{
+    void *node;
+    bool success;
+} HashMapResult;
+
+HashMapResult   hashmap_insert      (HashMap *hashmap, void *node);
+HashMapResult   hashmap_remove      (HashMap *hashmap, const void *key);
+void*           hashmap_get         (const HashMap *hashmap, const void *key);
+
+ITERATOR        hashmap_iterator            (const HashMap* hashmap, size_t index);
 bool            hashmap_iterator_has_next   (ITERATOR* it);
-void*           hashmap_iterator_next       (ITERATOR* it, size_t *size);
+void*           hashmap_iterator_next       (ITERATOR* it);

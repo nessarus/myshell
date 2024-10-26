@@ -48,6 +48,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <ctype.h>
+#include <limits.h>
 #include <sys/wait.h>
 #include <time.h>
 
@@ -59,7 +60,8 @@
 #define UNKNOWN_VENDOR_ADDRESS "??:??:??"
 #define UNKNOWN_VENDOR_NAME "UNKNOWN-VENDOR"
 
-const uint64_t BROADCAST = 0xffffffffffff;
+#define UINT48_MAX (UINT64_MAX >> 16)
+#define UINT24_MAX (UINT32_MAX >> 8)
 
 /**
  * @brief Requested device categories for report.
@@ -84,37 +86,49 @@ typedef struct Request
 /**
  * @brief A data structure a mac device's packet meta data.
  */
-typedef union Mac
+typedef union Address
 {
-    uint8_t address[MAX_LEN_ADDRESS];
+    uint8_t array[MAX_LEN_ADDRESS];
     uint64_t data;
-} Mac;
+} Address;
 
+/**
+ * @brief A data structure for a line in the packet file.
+ */
 typedef struct Packet
 {
-    Mac transmitter;
-    Mac receiver;
+    Address transmitter;
+    Address receiver;
     uint32_t bytes;
 } Packet;
+
+/**
+ * A data structure for a Mac address.
+ */
+typedef struct Mac
+{
+    Address address;
+    uint32_t bytes;
+} Mac;
 
 /**
  * @brief A data structure for macs.
  */
 typedef struct Macs
 {
-    Mac entries[MAX_NUM_MAC_ADDRESSES];
-    uint32_t bytes[MAX_NUM_MAC_ADDRESSES];
-    NODE nodes[MAX_NUM_MAC_ADDRESSES];
-    HASHMAP map;
+    Mac array[MAX_NUM_MAC_ADDRESSES];
+    Mac *nodes[MAX_NUM_MAC_ADDRESSES * 2];
+    HashMap map;
 } Macs;
 
 /**
  * @brief A data structure for a line in the report.
  */
-typedef union Entry
+typedef struct Entry
 {
-    uint8_t address[MAX_LEN_ADDRESS];
-    uint64_t data;
+    Address address;
+    const char *name;
+    uint32_t bytes;
 } Entry;
 
 /**
@@ -123,8 +137,6 @@ typedef union Entry
 typedef struct Report
 {
     Entry entries[MAX_NUM_MAC_ADDRESSES];
-    const char *names[MAX_NUM_MAC_ADDRESSES];
-    uint32_t bytes[MAX_NUM_MAC_ADDRESSES];
     uint32_t unknown_bytes;
     int length;
 } Report;
@@ -132,31 +144,105 @@ typedef struct Report
 /**
  * @brief A data structure for the vendor's oui data.
  */
-typedef union Vendor
+typedef union VendorAddress
 {
-    uint8_t address[MAX_LEN_VENDOR_ADDRESS];
+    uint8_t array[MAX_LEN_VENDOR_ADDRESS];
     uint32_t data;
-} Vendor;
+} VendorAddress;
 
 /**
  * @brief Parsed vendor data.
  */
 typedef struct VendorParse
 {
-    Vendor vendor;
+    VendorAddress address;
     char *name;
 } VendorParse;
+
+typedef struct Vendor
+{
+    VendorAddress address;
+    char name[MAX_LEN_VENDOR_NAME];
+} Vendor;
 
 /**
  * @brief A data structure for the oui data.
  */
 typedef struct Vendors
 {
-    Vendor entries[MAX_NUM_OUIS];
-    char names[MAX_NUM_OUIS][MAX_LEN_VENDOR_NAME];
-    NODE nodes[MAX_NUM_OUIS];
-    HASHMAP map;
+    Vendor array[MAX_NUM_OUIS];
+    Vendor *nodes[MAX_NUM_OUIS * 2];
+    HashMap map;
 } Vendors;
+
+/// Function handler for getting a mac key from a Mac struct.
+/// - Parameter node: Pointer to mac.
+void* get_mac_key(const void *node)
+{
+    const Mac *const mac = (const Mac *)node;
+    return (void *)&mac->address;
+}
+
+/// Function handler for hashing a mac key;
+/// - Parameter key: pointer to key
+size_t hash_mac_key(const void *key)
+{
+    const Address *const address = (const Address *)key;
+    return (size_t) address->data;
+}
+
+/// Function handler for getting hash from Mac struct.
+/// - Parameter node: Pointer to mac
+size_t get_mac_hash(const void *node)
+{
+    const void *const key = get_mac_key(node);
+    return hash_mac_key(key);
+}
+
+/// Function handler to check if mac keys match.
+/// - Parameters:
+///   - key1: pointer to key1
+///   - key2: pointer to key2
+bool equals_mac_key(const void *key1, const void *key2)
+{
+    const Address *const address1 = (const Address *)key1;
+    const Address *const address2 = (Address *)key2;
+    return address1->data == address2->data;
+}
+
+/// Function handler for getting vendor key.
+/// - Parameter node: Pointer to vendor.
+void* get_vendor_key(const void *node)
+{
+    const Vendor *const vendor = (const Vendor *)node;
+    return (void *)&vendor->address;
+}
+
+/// Function handler for hashing vendor key
+/// - Parameter key: Pointer to key.
+size_t hash_vendor_key(const void *key)
+{
+    const VendorAddress *const address = (const VendorAddress *)key;
+    return (size_t) address->data;
+}
+
+/// Function handler to get the vendor hash from vendor.
+/// - Parameter node: Pointer to vendor.
+size_t get_vendor_hash(const void *node)
+{
+    const void *const key = get_vendor_key(node);
+    return hash_vendor_key(key);
+}
+
+/// Function handler to check if vendor key is equal.
+/// @param key1 Pointer to key1.
+/// @param key2 Poniter to key2.
+bool equals_vendor_key(const void *key1, const void *key2)
+{
+    const VendorAddress *const address1 = (const VendorAddress *)key1;
+    const VendorAddress *const address2 = (const VendorAddress *)key2;
+    return address1->data == address2->data;
+}
 
 /**
  * @brief Parses input arguments into the wifi report request.
@@ -179,7 +265,13 @@ Request parse_request(int argc, char *argv[])
         break;
 
     default:
-        fprintf(stderr, "Need input arguements.\n");
+        fprintf(stderr, "wifistats can be invoked in two ways:\n"
+                "prompt> ./wifistats ['t' or 'r'] packetfile\n"
+                "e.g. ./wifistats t sample-packets-large.txt"
+                "OR\n"
+                "prompt> ./wifistats ['t' or 'r'] packetfile OUIfile\n"
+                "e.g. ./wifistats t sample-packets-large.txt "
+                "sample-OUIfile-large.txt\n");
         exit(EXIT_FAILURE);
     }
 
@@ -210,7 +302,7 @@ Request parse_request(int argc, char *argv[])
  */
 bool is_broadcast(uint64_t address)
 {
-    return address == BROADCAST;
+    return address == UINT48_MAX;
 }
 
 /**
@@ -269,22 +361,22 @@ uint8_t parse_hex_byte(char *line)
  * 
  * @param line          The line to parse.
  * @param delimiters    The address's delimiters
- * @return Mac          A mac address data structure.
+ * @return Address          A mac address data structure.
  */
-Mac parse_address(char *line, const char *delimiters)
+Address parse_address(char *line, const char *delimiters)
 {
-    Mac address = {0};
+    Address address = {0};
 
     char *next;
     char *token = strtok_r(line, delimiters, &next);
-    for (size_t i = 0; i < sizeof(address.address); i++)
+    for (size_t i = 0; i < sizeof(address.array); i++)
     {
         if (token == NULL)
         {
             break;
         }
 
-        address.address[i] = parse_hex_byte(token);
+        address.array[i] = parse_hex_byte(token);
         token = strtok_r(NULL, delimiters, &next);
     }
 
@@ -295,7 +387,7 @@ Mac parse_address(char *line, const char *delimiters)
  * @brief Parsing a line in the packet file.
  *
  * @param line      A line containing the packet meta data.
- * @return Mac - A data structure for a mac's packet meta data.
+ * @return Address - A data structure for a mac's packet meta data.
  */
 Packet parse_packet(char *line)
 {
@@ -337,7 +429,7 @@ Packet parse_packet(char *line)
  * @brief Parse line from the OUI file for vendor data.
  *
  * @param line      A line from the OUI file.
- * @return Vendor - A data structure containing a vendor's data.
+ * @return VendorAddress - A data structure containing a vendor's data.
  */
 VendorParse parse_vendor(char *line)
 {
@@ -349,8 +441,8 @@ VendorParse parse_vendor(char *line)
     if (token != NULL)
     {
         // Parse vendor address.
-        Mac address = parse_address(token, ":-");
-        parse.vendor.data = address.data;
+        Address address = parse_address(token, ":-");
+        parse.address.data = (uint32_t) address.data;
         token = strtok_r(NULL, "\t\n", &next);
     }
 
@@ -379,39 +471,41 @@ Vendors parse_ouifile(Request *request)
     }
 
     Vendors vendors = {0};
-    vendors.map = (HASHMAP){.nodes = vendors.nodes, .capacity = MAX_NUM_OUIS};
+    vendors.map = (HashMap){
+        .nodes = (void **)vendors.nodes,
+        .capacity = sizeof(vendors.nodes)/sizeof(vendors.nodes[0]),
+        .interface = {
+            .equals_key = equals_vendor_key,
+            .get_hash = get_vendor_hash,
+            .get_key = get_vendor_key,
+            .hash_key = hash_vendor_key
+        }
+    };
 
     char line[BUFSIZ];
 
     while (fgets(line, sizeof(line), fp) != NULL)
     {
-        const int ii = vendors.map.size;
-        uint32_t *address = &vendors.entries[ii].data;
-        char *name = vendors.names[ii];
-
         VendorParse parse = parse_vendor(line);
-        *address = parse.vendor.data;
-        strncpy(name, parse.name, MAX_LEN_VENDOR_NAME - 1);
-        parse.name[MAX_LEN_VENDOR_NAME - 1] = '\0';
+        const size_t num_entries = vendors.map.size;
 
-        const PAIR entry = {
-            .first = (void *)address,
-            .first_size = sizeof(*address),
-            .second = (void *)name,
-            .second_size = MAX_LEN_VENDOR_NAME};
-
-        if (vendors.map.size >= MAX_NUM_MAC_ADDRESSES)
+        if (num_entries >= MAX_NUM_MAC_ADDRESSES)
         {
-            if (!hashmap_contains(&vendors.map, entry.first, entry.first_size))
+            const Vendor entry = {.address.data = parse.address.data};
+            if (!hashmap_contains(&vendors.map, (const void *const)&entry))
             {
                 fprintf(stderr, "Parsing too many unique vendor address.\n");
                 exit(EXIT_FAILURE);
             }
+            
+            continue;
         }
-        else
-        {
-            hashmap_insert(&vendors.map, entry, NULL);
-        }
+        
+        Vendor *const vendor = &vendors.array[num_entries];
+        vendor->address.data = parse.address.data;
+        strncpy(vendor->name, parse.name,MAX_LEN_VENDOR_NAME - 1);
+        parse.name[MAX_LEN_VENDOR_NAME - 1] = '\0';
+        hashmap_insert(&vendors.map, (void *) vendor);
     }
 
     fclose(fp);
@@ -435,7 +529,16 @@ Macs parse_macs(const Request *request)
     }
 
     Macs macs = {0};
-    macs.map = (HASHMAP){.nodes = macs.nodes, .capacity = MAX_NUM_MAC_ADDRESSES};
+    macs.map = (HashMap){
+        .nodes = (void **)macs.nodes,
+        .capacity = sizeof(macs.nodes)/sizeof(macs.nodes[0]),
+        .interface = {
+            .equals_key = equals_mac_key,
+            .get_hash = get_mac_hash,
+            .get_key = get_mac_key,
+            .hash_key = hash_mac_key
+        }
+    };
 
     rewind(fp);
 
@@ -450,41 +553,38 @@ Macs parse_macs(const Request *request)
             continue;
         }
 
-        Mac mac = request->requested == TRANSMITTERS
+        Address address = request->requested == TRANSMITTERS
                       ? packet.transmitter
                       : packet.receiver;
 
         if (request->ouifile_provided)
         {
-            mac.data &= 0xffffff;
+            address.data &= UINT24_MAX;
         }
 
-        const int ii = macs.map.size;
-        uint64_t *address = &macs.entries[ii].data;
-        uint32_t *bytes = &macs.bytes[ii];
+        const size_t num_entries = macs.map.size;
 
-        *address = mac.data;
-        *bytes = packet.bytes;
-
-        PAIR entry = {
-            .first = address,
-            .first_size = sizeof(*address),
-            .second = bytes,
-            .second_size = sizeof(*bytes)};
-
-        if (macs.map.size >= MAX_NUM_MAC_ADDRESSES)
+        if (num_entries >= MAX_NUM_MAC_ADDRESSES)
         {
-            if (!hashmap_contains(&macs.map, entry.first, entry.first_size))
+            const Mac entry = {.address.data = address.data};
+            if (!hashmap_contains(&macs.map, (void *)&entry))
             {
                 fprintf(stderr, "Parsing too many unique mac address.\n");
                 exit(EXIT_FAILURE);
             }
+            
+            continue;
         }
-        else if (!hashmap_insert(&macs.map, entry, &entry))
+        
+        Mac *const mac = &macs.array[num_entries];
+        *mac = (Mac){.address.data = address.data, .bytes = packet.bytes};
+        const HashMapResult result = hashmap_insert(&macs.map, (void *)mac);
+        if (!result.success)
         {
-            if (entry.second)
+            if (result.node != NULL)
             {
-                *((uint32_t *)entry.second) += packet.bytes;
+                Mac *const node = (Mac *)result.node;
+                node->bytes += packet.bytes;
             }
         }
     }
@@ -510,33 +610,32 @@ Report create_report(Macs *macs, Vendors *oui, Request *request)
     {
         for (int i = 0; i < macs->map.size; ++i)
         {
-            Mac *mac = &macs->entries[i];
-            char *oui_name = (char *)hashmap_get(
-                &oui->map,
-                &mac->data,
-                sizeof(mac->data),
-                NULL);
+            const Mac *const mac = &macs->array[i];
+            const void *const address = (const void *)&mac->address;
+            const Vendor *const vendor =
+                (const Vendor *)hashmap_get(&oui->map, address);
 
-            if (oui_name == NULL)
+            if (vendor == NULL)
             {
-                report.unknown_bytes += macs->bytes[i];
+                report.unknown_bytes += mac->bytes;
+                continue;
             }
-            else
-            {
-                report.entries[report.length].data = macs->entries[i].data;
-                report.names[report.length] = oui_name;
-                report.bytes[report.length] = macs->bytes[i];
-                report.length++;
-            }
+            
+            report.entries[report.length++] = (Entry){
+                .address.data = mac->address.data,
+                .name = vendor->name,
+                .bytes = mac->bytes
+            };
         }
     }
     else
     {
         for (int i = 0; i < macs->map.size; i++)
         {
-            report.entries[report.length].data = macs->entries[i].data;
-            report.bytes[report.length] = macs->bytes[i];
-            report.length++;
+            report.entries[report.length++] = (Entry){
+                .address = macs->array[i].address,
+                .bytes = macs->array[i].bytes
+            };
         }
     }
 
@@ -572,37 +671,40 @@ void sort_report(const Request *request)
 
 /**
  * @brief Prints the report to the standard output.
- *
+ * 
  * @param report The report to be printed.
+ * @param request A data structure with the request data for the report.
  */
-void print_report(const Report *report, const Request *request)
+void print_report(Report *report, Request *request)
 {
     if (request->ouifile_provided)
     {
         for (int i = 0; i < report->length; i++)
         {
-            const uint8_t *h = report->entries[i].address;
-            const char *name = report->names[i];
-            uint32_t bytes = report->bytes[i];
+            const Entry *const entry = &report->entries[i];
+            const uint8_t *const a = entry->address.array;
+            const char *const name = entry->name;
+            uint32_t bytes = entry->bytes;
 
-            printf("%02X:%02X:%02X\t%s\t%d\n", h[0], h[1], h[2], name, bytes);
+            printf("%02X:%02X:%02X\t%s\t%d\n",
+                   a[0], a[1], a[2], name, bytes);
         }
 
         const char *address = UNKNOWN_VENDOR_ADDRESS;
         const char *name = UNKNOWN_VENDOR_NAME;
-        uint32_t bytes = report->unknown_bytes;
+        const uint32_t bytes = report->unknown_bytes;
         printf("%s\t%s\t%d\n", address, name, bytes);
     }
     else
     {
         for (int i = 0; i < report->length; i++)
         {
-            const uint8_t *h = report->entries[i].address;
-            uint32_t bytes = report->bytes[i];
-            printf(
-                "%02X:%02X:%02X:%02X:%02X:%02X\t%d\n",
-                h[0], h[1], h[2], h[3], h[4], h[5],
-                bytes);
+            const Entry *const entry = &report->entries[i];
+            const uint8_t *const a = entry->address.array;
+            const uint32_t bytes = entry->bytes;
+            printf("%02X:%02X:%02X:%02X:%02X:%02X\t%d\n",
+                   a[0], a[1], a[2], a[3], a[4], a[5],
+                   bytes);
         }
     }
 }

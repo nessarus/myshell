@@ -25,7 +25,7 @@ bool iterator_has_next(ITERATOR *it)
  * @param length    Outputs the length of the element.
  * @return  Returns a pointer to the next element.
  */
-void* iterator_next(ITERATOR *it, size_t *size)
+void* iterator_next(ITERATOR *it)
 {
-    return it->next(it, size);
+    return it->next(it);
 }

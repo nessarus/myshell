@@ -11,7 +11,7 @@
 #include <signal.h>
 #include <unistd.h>
 
-SET background_pids = { 0 };
+static SET background_pids = { 0 };
 
 /**
  * @brief   Handler for when child terminate signal.

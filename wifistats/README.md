@@ -49,7 +49,7 @@ then the Vendor is NETGEAR (84-1B-5E)
 Output: vendor OUI, vendor name, packet sum
 
 Example:  
-\>> ./wifistats t sample-packets.txt sample-OUIfile-small
+\>> ./wifistats t sample-packets-large.txt sample-OUIfile-large.txt
    
 MAC Address | vendor packet sum 
  --- | ---

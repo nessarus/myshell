@@ -6,7 +6,6 @@
  */
 
 #include "set.h"
-#include "globals.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -261,7 +260,7 @@ bool set_remove(SET *set, int data)
 
         if (node->data == data)
         {
-            *node = (NODE){};
+            *node = (NODE){0};
             set->size--;
             break;
         }
@@ -296,7 +295,7 @@ bool set_remove(SET *set, int data)
 void set_free(SET *set)
 {
     free(set->nodes);
-    *set = (SET){};
+    *set = (SET){0};
 }
 
 /**
