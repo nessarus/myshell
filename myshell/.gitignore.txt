@@ -1,0 +1,75 @@
+===============================================
+Standard .gitignore for CMake Projects
+===============================================
+----------------
+1. CMake Build and Cache Files
+----------------
+Ignore the primary build directory, typically named 'build' or 'bin'.
+If you use an alternative name (like 'out' or 'Release'), you should add it here.
+build/
+Build/
+bin/
+out/
+debug/
+release/
+Release/
+Debug/
+
+Ignore the CMake cache and manifest files
+CMakeCache.txt
+CMakeFiles/
+Makefile
+cmake_install.cmake
+install_manifest.txt
+
+Do not ignore the following files, as they are essential for other
+developers to configure their build environment.
+!CMakeLists.txt
+!*/CMakeLists.txt
+
+----------------
+2. Executables and Object Files
+----------------
+Ignore compiled object files and dependency files
+*.o
+*.d
+*.obj
+*.rsp
+
+Ignore static and shared libraries
+*.lib
+*.a
+*.so
+*.dylib
+*.dll
+
+Ignore common executable formats
+*.exe
+*.out
+*.app
+*.obj
+*.elf
+
+----------------
+3. Editor/IDE Specific Files
+----------------
+Visual Studio / VS Code
+.vs/
+.vscode/
+
+CLion
+.idea/
+
+Xcode
+*.xcodeproj/
+*.xcworkspace/
+DerivedData/
+
+----------------
+4. Operating System Generated Files
+----------------
+macOS
+.DS_Store
+
+Windows
+Thumbs.db
