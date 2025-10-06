@@ -16,7 +16,7 @@
 
 #define DEFAULT_HOME    "/tmp"
 #define DEFAULT_PATH    "/bin:/usr/bin:/usr/local/bin:."
-#define DEFAULT_CDPATH  ".:.."
+#define DEFAULT_CDPATH  "./.."
 #define COLON           ":"
 
 #define COMMENT_CHAR    '#'    // comment character

@@ -1,13 +1,13 @@
 # A Makefile to build our 'myshell' project
 
 PROJECT =  	myshell
-HEADERS =  	$(PROJECT).h
+HEADERS = 	$(wildcard include/*.h)
 SRC     =  	$(wildcard *.c)
 OBJ     =  	$(SRC:.c=.o)
 
 
 COMPILE =  clang -std=c99 -g
-CFLAGS  =  -Wall -pedantic -Werror -fcolor-diagnostics -fansi-escape-codes
+CFLAGS  =  -Wall -pedantic -Werror -fcolor-diagnostics -fansi-escape-codes -Iinclude
 
 
 $(PROJECT) : $(OBJ)
