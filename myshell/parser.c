@@ -6,10 +6,6 @@
  * @date        2023-08-09
  */
 
-#if defined(__linux__)
-    char *strdup(const char *str);
-#endif
-
 #include "parser.h"
 #include "globals.h"
 #include "myshell.h"
@@ -67,64 +63,70 @@ static  char    chararray[BUFSIZ];
 static  char    *ch_ptr;
 
 static  char    line[BUFSIZ];
-static  int     nextch;
-static  int     nextch_index;
-static  int     line_length;
-static  int     line_count;
+static  char    prompt1[32], prompt2[32];
+static  char    ch;
+static  size_t  ch_count;
+static  size_t  line_length;
+static  bool    init_prompt;
 
-static  int     prompt_no   = 1;
-static  int     nerrors = 0;
+static  uint32_t prompt_no   = 1;
+static  uint32_t nerrors = 0;
 
 /**
  * @brief Get the next buffered char from line
  */
 static void get(void)
 {
-    if (nextch_index != line_length) 
+    if (ch_count >= line_length)
     {
-        nextch = line[nextch_index++];
-        return;
-    }
-
-    if (interactive) 
-    {
-        static char prompt1[32], prompt2[32];
-
-        if (line_count == 1) 
+        ch = '\0';
+        line[0] = '\0';
+        line_length = 0;
+        ch_count = 0;
+        
+        if (interactive && init_prompt)
         {
             // format prompt
             sprintf(prompt1, "\n%s.%i ", name0, prompt_no);
             strcpy(prompt2, " ++          ");
             prompt2[strlen(prompt1) - 1] = '\0';
+            fputs(prompt1, stdout);
         }
-
-        fputs(line_count == 1 ? prompt1 : prompt2 , stdout);
+        
+        if (fgets(line, sizeof(line), fp) == NULL)
+        {
+            init_prompt = false;
+            return;
+        }
+        
+        if (interactive && !init_prompt)
+        {
+            fputs(prompt2 , stdout);
+        }
+        init_prompt = false;
+        
+        line_length = (size_t) strlen(line);
     }
-
-    // stores input line
-    fgets(line, sizeof line, fp);
-    line_length = strlen(line);
-    nextch_index = 0;
-    line_count++;
-    nextch = line[nextch_index++];
+    
+    ch = line[ch_count++];
 }
 
 /**
  * @brief Rewinds get's next buffered char to the previous one
  */
-#define unget() (nextch = line[--nextch_index])
+#define unget() (ch = line[--ch_count])
 
 /**
  * @brief Skip spaces, tabs and comments
  */
 static void skip_blanks(void)
 {
-    while (nextch == ' ' || nextch == '\t' || nextch == COMMENT_CHAR)
+    while (ch == ' ' || ch == '\t' || ch == COMMENT_CHAR)
     {
         // ignore to end-of-line
-        if (nextch == COMMENT_CHAR)
+        if (ch == COMMENT_CHAR)
         {
-            while (nextch != '\n')
+            while (ch_count < line_length)
             {
                 get();
             }
@@ -141,14 +143,14 @@ static void escape_char(void)
 {
     get();
 
-    switch (nextch)
+    switch (ch)
     {
         case 'b': *ch_ptr++ = '\b'; break;
         case 'f': *ch_ptr++ = '\f'; break;
         case 'n': *ch_ptr++ = '\n'; break;
         case 'r': *ch_ptr++ = '\r'; break;
         case 't': *ch_ptr++ = '\t'; break;
-        default : *ch_ptr++ = nextch;
+        default : *ch_ptr++ = ch;
     }
 
     get();
@@ -169,7 +171,7 @@ static void gettoken(void)
         return;
     }
     
-    switch (nextch)
+    switch (ch)
     {
     case '<':   // input redirection 
         token = T_FROMFILE;
@@ -177,7 +179,7 @@ static void gettoken(void)
     case '>':   // output redirection 
         token = T_APPEND;
         get();
-        if (nextch != '>') 
+        if (ch != '>') 
         {
             unget();
             token = T_TOFILE;
@@ -189,7 +191,7 @@ static void gettoken(void)
     case '&':   // and-conditional
         token = T_AND;
         get();
-        if(nextch != '&')
+        if(ch != '&')
         {
             unget(); // background
             token = T_BACKGROUND;
@@ -199,7 +201,7 @@ static void gettoken(void)
         token = T_OR;
         get();
         
-        if (nextch != '|') // pipe operator
+        if (ch != '|') // pipe operator
         {  
             unget();
             token = T_PIPE;
@@ -216,19 +218,19 @@ static void gettoken(void)
         break;
     case '"':
     case '\'':
-        *chararray = nextch;
+        *chararray = ch;
         ch_ptr = chararray + 1;
 
         do 
         {
             get();
-            while (nextch == '\\')
+            while (ch == '\\')
             {
                 escape_char();
             }
-            *ch_ptr++ = nextch;
+            *ch_ptr++ = ch;
         } 
-        while((nextch != *chararray) && !feof(fp));
+        while((ch != *chararray) && !feof(fp));
 
         *--ch_ptr = '\0';
         token = (*chararray == '"') ? T_DQUOTE : T_SQUOTE;
@@ -236,13 +238,13 @@ static void gettoken(void)
     default:
         ch_ptr = chararray;
 
-        while (!feof(fp)  && !strchr(" \t\n<>|();&", nextch)) 
+        while (!feof(fp)  && !strchr(" \t\n<>|();&", ch)) 
         {
-            while (nextch == '\\')
+            while (ch == '\\')
             {
                 escape_char();
             }
-            *ch_ptr++ = nextch;
+            *ch_ptr++ = ch;
             get();
         }
 
@@ -612,9 +614,9 @@ SHELLCMD *parse_shellcmd_string(char *str)
 
     fp = stdin;
     sprintf(line, "%s\n", str);
-    line_length     = strlen(line);
-    nextch_index    = 0;
-    line_count      = 1;
+    line_length     = (size_t) strlen(line);
+    ch_count        = 0;
+    init_prompt     = true;
     nerrors	        = 0;
     gettoken();
     t1 = cmd_sequence();
@@ -640,14 +642,13 @@ SHELLCMD *parse_shellcmd_string(char *str)
  * @brief Read input from the file pointer to construct a command tree. 
  *  Anticipated for this function to be called from main().
  * 
- * @param _fp   The input file pointer.
+ * @param fp_   The input file pointer.
  * @return A memory allocated pointer to a shellcmd struct.
  */
-SHELLCMD *parse_shellcmd(FILE *_fp)
+SHELLCMD *parse_shellcmd(FILE *fp_)
 {
     SHELLCMD *t1;
     sighandler_t old_handler = signal(SIGINT, interrupt_parsing);
-    setjmp(env);
 
     if (setjmp(env)) 
     {
@@ -660,10 +661,10 @@ SHELLCMD *parse_shellcmd(FILE *_fp)
     do 
     {
         t1              = NULL;
-        fp              = _fp;
-        nextch_index    = 0;
+        fp              = fp_;
+        ch_count        = 0;
         line_length     = 0;
-        line_count      = 1;
+        init_prompt     = true;
         nerrors         = 0;
 
         if (feof(fp)) 

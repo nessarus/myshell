@@ -5,10 +5,6 @@
  * @date    2023-09-04
  */
 
-#if defined(__linux__)
-    char *strdup(const char *str);
-#endif
-
 #include "shellscript.h"
 #include "globals.h"
 #include "filepaths.h"
