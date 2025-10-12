@@ -10,8 +10,6 @@
 #include <errno.h>
 #include <string.h>
 
-#define EXIT_MAJOR_ERROR 2
-
 /**
  * CITS2002 Project 2 2017
  */
@@ -39,7 +37,7 @@ void check_allocation0(void *p, char *file, const char *func, int line)
     {
         fprintf(stderr, "%s, %s() line %i: unable to allocate memory\n",
             file, func, line);
-        exit(EXIT_MAJOR_ERROR);
+        exit(EXIT_FAILURE);
     }
 }
 

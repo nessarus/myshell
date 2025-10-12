@@ -7,7 +7,6 @@
  */
 
 #include "myshell.h"
-#include "set.h"
 
 int background_shellcmd(SHELLCMD *t);
 void background_exit(void);
